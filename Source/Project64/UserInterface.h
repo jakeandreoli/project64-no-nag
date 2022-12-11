@@ -14,7 +14,7 @@
 #include "UserInterface/Notification.h"
 #include "UserInterface/RomBrowser.h"
 #include "UserInterface/SettingsConfig.h"
-#include "UserInterface/SupportWindow.h"
+//#include "UserInterface/SupportWindow.h"
 #include "UserInterface/resource.h"
 #include "WTLApp.h"
 #include <Project64-core/N64System/FramePerSecond.h>

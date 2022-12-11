@@ -170,7 +170,7 @@ private:
     void OnEnhancements(HWND hWnd);
     void OnCheats(HWND hWnd);
     void OnSettings(HWND hWnd);
-    void OnSupportProject64(HWND hWnd);
+   //void OnSupportProject64(HWND hWnd);
 
     void FillOutMenu(HMENU hMenu);
     std::wstring GetSaveSlotString(int Slot);

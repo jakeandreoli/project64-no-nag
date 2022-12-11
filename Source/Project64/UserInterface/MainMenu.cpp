@@ -300,11 +300,6 @@ void CMainMenu::OnSettings(HWND hWnd)
     CSettingConfig().Display(hWnd);
 }
 
-void CMainMenu::OnSupportProject64(HWND hWnd)
-{
-    CSupportWindow(m_Gui->Support()).Show(hWnd, false);
-}
-
 bool CMainMenu::ProcessMessage(HWND hWnd, DWORD /*FromAccelerator*/, DWORD MenuID)
 {
     switch (MenuID)
@@ -599,7 +594,7 @@ bool CMainMenu::ProcessMessage(HWND hWnd, DWORD /*FromAccelerator*/, DWORD MenuI
         g_Notify->DisplayMessage(3, stdstr_f(GS(MENU_SLOT_SAVE), GetSaveSlotString((MenuID - ID_CURRENT_SAVE_1) + 1).c_str()).c_str());
         g_Settings->SaveDword(Game_CurrentSaveState, (DWORD)((MenuID - ID_CURRENT_SAVE_1) + 1));
         break;
-    case ID_HELP_SUPPORT_PROJECT64: OnSupportProject64(hWnd); break;
+    //case ID_HELP_SUPPORT_PROJECT64: OnSupportProject64(hWnd); break;
     case ID_HELP_DISCORD: ShellExecute(nullptr, L"open", L"https://discord.gg/Cg3zquF", nullptr, nullptr, SW_SHOWMAXIMIZED); break;
     case ID_HELP_WEBSITE: ShellExecute(nullptr, L"open", L"http://www.pj64-emu.com", nullptr, nullptr, SW_SHOWMAXIMIZED); break;
     case ID_HELP_ABOUT: CAboutDlg(m_Gui->Support()).DoModal(); break;
@@ -1361,7 +1356,6 @@ void CMainMenu::FillOutMenu(HMENU hMenu)
 
     // Help menu
     MenuItemList HelpMenu;
-    HelpMenu.push_back(MENU_ITEM(ID_HELP_SUPPORT_PROJECT64, MENU_SUPPORT_PROJECT64));
     HelpMenu.push_back(MENU_ITEM(ID_HELP_DISCORD, MENU_DISCORD));
     HelpMenu.push_back(MENU_ITEM(ID_HELP_WEBSITE, MENU_WEBSITE));
     HelpMenu.push_back(MENU_ITEM(SPLITER));

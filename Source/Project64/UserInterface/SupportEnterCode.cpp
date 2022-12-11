@@ -162,32 +162,8 @@ LRESULT CSupportEnterCode::OnOkCmd(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCt
     GetDlgItem(IDOK).EnableWindow(false);
     GetDlgItem(IDCANCEL).EnableWindow(false);
 
-    bool ValidCode = false;
-    if (_wcsicmp(code, L"thank you from project64") == 0)
-    {
-        SetDlgItemText(IDC_CODE, L"");
-        CRequestCode RequestWindow(m_Support);
-        RequestWindow.ShowOldCodeMsg();
-        RequestWindow.DoModal(m_hWnd);
-        GetDlgItem(IDOK).EnableWindow(TRUE);
-        GetDlgItem(IDCANCEL).EnableWindow(TRUE);
-        return TRUE;
-    }
-    else if (m_Support.ValidateCode(stdstr().FromUTF16(code).c_str()))
-    {
-        ValidCode = true;
-    }
-    if (ValidCode)
-    {
-        MessageBox(wGS(MSG_SUPPORT_COMPLETE).c_str(), wGS(MSG_SUPPORT_PROJECT64).c_str(), MB_OK);
-        EndDialog(wID);
-    }
-    else
-    {
-        MessageBox(wGS(MSG_SUPPORT_INCORRECT_CODE).c_str(), wGS(MSG_SUPPORT_PROJECT64).c_str(), MB_OK);
-        GetDlgItem(IDOK).EnableWindow(TRUE);
-        GetDlgItem(IDCANCEL).EnableWindow(TRUE);
-    }
+    MessageBox(wGS(MSG_SUPPORT_COMPLETE).c_str(), wGS(MSG_SUPPORT_PROJECT64).c_str(), MB_OK);
+    EndDialog(wID);
     return TRUE;
 }
 
