@@ -1,17 +1,18 @@
 #include "stdafx.h"
 
 #include <Project64-core/ExceptionHandler.h>
-#include <Project64-core/N64System/Interpreter/InterpreterCPU.h>
 #include <Project64-core/N64System/N64System.h>
 #include <Project64-core/N64System/Recompiler/Recompiler.h>
 #include <Project64-core/N64System/SystemGlobals.h>
 
-CRecompiler::CRecompiler(CMipsMemoryVM & MMU, CRegisters & Registers, bool & EndEmulation) :
-    m_MMU(MMU),
-    m_Registers(Registers),
+CRecompiler::CRecompiler(CN64System & System, bool & EndEmulation) :
+    m_System(System),
+    m_MMU(System.m_MMU_VM),
+    m_Reg(System.m_Reg),
+    m_TLB(System.m_TLB),
     m_EndEmulation(EndEmulation),
     m_MemoryStack(0),
-    PROGRAM_COUNTER(Registers.m_PROGRAM_COUNTER),
+    PROGRAM_COUNTER(System.m_Reg.m_PROGRAM_COUNTER),
     m_LogFile(nullptr)
 {
     CFunctionMap::AllocateMemory();
@@ -43,9 +44,9 @@ void CRecompiler::Run()
 
     __except_try()
     {
-        if (g_System->LookUpMode() == FuncFind_VirtualLookup)
+        if (m_System.LookUpMode() == FuncFind_VirtualLookup)
         {
-            if (g_System->bSMM_ValidFunc())
+            if (m_System.bSMM_ValidFunc())
             {
                 RecompilerMain_VirtualTable_validate();
             }
@@ -54,13 +55,13 @@ void CRecompiler::Run()
                 RecompilerMain_VirtualTable();
             }
         }
-        else if (g_System->LookUpMode() == FuncFind_ChangeMemory)
+        else if (m_System.LookUpMode() == FuncFind_ChangeMemory)
         {
             RecompilerMain_ChangeMemory();
         }
         else
         {
-            if (g_System->bSMM_ValidFunc())
+            if (m_System.bSMM_ValidFunc())
             {
                 RecompilerMain_Lookup_validate();
             }
@@ -87,7 +88,9 @@ void CRecompiler::RecompilerMain_VirtualTable()
     {
         if (!m_MMU.ValidVaddr(PC))
         {
-            m_Registers.DoTLBReadMiss(false, PC);
+            m_Reg.TriggerAddressException(PC, EXC_RMISS);
+            PC = m_System.m_JumpToLocation;
+            m_System.m_PipelineStage = PIPELINE_STAGE_NORMAL;
             if (!m_MMU.ValidVaddr(PC))
             {
                 g_Notify->DisplayError(stdstr_f("Failed to translate PC to a PAddr: %X\n\nEmulation stopped", PC).c_str());
@@ -122,7 +125,7 @@ void CRecompiler::RecompilerMain_VirtualTable()
                 g_Notify->FatalError(MSG_MEM_ALLOC_ERROR);
             }
             memset(table, 0, sizeof(PCCompiledFunc) * (0x1000 >> 2));
-            if (g_System->bSMM_Protect())
+            if (m_System.bSMM_Protect())
             {
                 WriteTrace(TraceRecompiler, TraceError, "Create Table (%X): Index = %d", table, PC >> 0xC);
                 m_MMU.ProtectMemory(PC & ~0xFFF, PC | 0xFFF);
@@ -147,15 +150,17 @@ void CRecompiler::RecompilerMain_Lookup()
     {
         if (!m_MMU.VAddrToPAddr(PROGRAM_COUNTER, PhysicalAddr))
         {
-            m_Registers.DoTLBReadMiss(false, PROGRAM_COUNTER);
+            m_Reg.TriggerAddressException(PROGRAM_COUNTER, EXC_RMISS);
             if (!m_MMU.VAddrToPAddr(PROGRAM_COUNTER, PhysicalAddr))
             {
                 g_Notify->DisplayError(stdstr_f("Failed to translate PC to a PAddr: %X\n\nEmulation stopped", PROGRAM_COUNTER).c_str());
                 m_EndEmulation = true;
             }
+            PROGRAM_COUNTER = m_System.m_JumpToLocation;
+            m_System.m_PipelineStage = PIPELINE_STAGE_NORMAL;
             continue;
         }
-        if (PhysicalAddr < g_System->RdramSize())
+        if (PhysicalAddr < m_System.RdramSize())
         {
             CCompiledFunc * info = JumpTable()[PhysicalAddr >> 2];
 
@@ -166,7 +171,7 @@ void CRecompiler::RecompilerMain_Lookup()
                 {
                     break;
                 }
-                if (g_System->bSMM_Protect())
+                if (m_System.bSMM_Protect())
                 {
                     m_MMU.ProtectMemory(PROGRAM_COUNTER & ~0xFFF, PROGRAM_COUNTER | 0xFFF);
                 }
@@ -178,16 +183,16 @@ void CRecompiler::RecompilerMain_Lookup()
         {
             uint32_t opsExecuted = 0;
 
-            while (m_MMU.VAddrToPAddr(PROGRAM_COUNTER, PhysicalAddr) && PhysicalAddr >= g_System->RdramSize())
+            while (m_MMU.VAddrToPAddr(PROGRAM_COUNTER, PhysicalAddr) && PhysicalAddr >= m_System.RdramSize())
             {
-                CInterpreterCPU::ExecuteOps(g_System->CountPerOp());
-                opsExecuted += g_System->CountPerOp();
+                m_System.m_OpCodes.ExecuteOps(m_System.CountPerOp());
+                opsExecuted += m_System.CountPerOp();
             }
 
             if (g_SyncSystem)
             {
-                g_System->UpdateSyncCPU(g_SyncSystem, opsExecuted);
-                g_System->SyncCPU(g_SyncSystem);
+                m_System.UpdateSyncCPU(opsExecuted);
+                m_System.SyncSystem();
             }
         }
     }
@@ -198,22 +203,23 @@ void CRecompiler::RecompilerMain_Lookup_validate()
     WriteTrace(TraceRecompiler, TraceInfo, "Start");
     bool & Done = m_EndEmulation;
     uint32_t & PC = PROGRAM_COUNTER;
-
     uint32_t PhysicalAddr;
 
     while (!Done)
     {
         if (!m_MMU.VAddrToPAddr(PC, PhysicalAddr))
         {
-            m_Registers.DoTLBReadMiss(false, PC);
+            m_Reg.TriggerAddressException(PC, EXC_RMISS);
             if (!m_MMU.VAddrToPAddr(PC, PhysicalAddr))
             {
                 g_Notify->DisplayError(stdstr_f("Failed to translate PC to a PAddr: %X\n\nEmulation stopped", PC).c_str());
                 Done = true;
             }
+            PROGRAM_COUNTER = m_System.m_JumpToLocation;
+            m_System.m_PipelineStage = PIPELINE_STAGE_NORMAL;
             continue;
         }
-        if (PhysicalAddr < g_System->RdramSize())
+        if (PhysicalAddr < m_System.RdramSize())
         {
             CCompiledFunc * info = JumpTable()[PhysicalAddr >> 2];
 
@@ -224,7 +230,7 @@ void CRecompiler::RecompilerMain_Lookup_validate()
                 {
                     break;
                 }
-                if (g_System->bSMM_Protect())
+                if (m_System.bSMM_Protect())
                 {
                     m_MMU.ProtectMemory(PC & ~0xFFF, PC | 0xFFF);
                 }
@@ -255,12 +261,12 @@ void CRecompiler::RecompilerMain_Lookup_validate()
 
             if (bRecordExecutionTimes())
             {
-                uint64_t PreNonCPUTime = g_System->m_CPU_Usage.NonCPUTime();
+                uint64_t PreNonCPUTime = m_System.m_CPU_Usage.NonCPUTime();
                 HighResTimeStamp StartTime, EndTime;
                 StartTime.SetToNow();
                 (info->Function())();
                 EndTime.SetToNow();
-                uint64_t PostNonCPUTime = g_System->m_CPU_Usage.NonCPUTime();
+                uint64_t PostNonCPUTime = m_System.m_CPU_Usage.NonCPUTime();
                 uint64_t TimeTaken = EndTime.GetMicroSeconds() - StartTime.GetMicroSeconds();
                 if (PostNonCPUTime >= PreNonCPUTime)
                 {
@@ -290,16 +296,16 @@ void CRecompiler::RecompilerMain_Lookup_validate()
         {
             uint32_t opsExecuted = 0;
 
-            while (m_MMU.VAddrToPAddr(PC, PhysicalAddr) && PhysicalAddr >= g_System->RdramSize())
+            while (m_MMU.VAddrToPAddr(PC, PhysicalAddr) && PhysicalAddr >= m_System.RdramSize())
             {
-                CInterpreterCPU::ExecuteOps(g_System->CountPerOp());
-                opsExecuted += g_System->CountPerOp();
+                m_System.m_OpCodes.ExecuteOps(m_System.CountPerOp());
+                opsExecuted += m_System.CountPerOp();
             }
 
             if (g_SyncSystem)
             {
-                g_System->UpdateSyncCPU(g_SyncSystem, opsExecuted);
-                g_System->SyncCPU(g_SyncSystem);
+                m_System.UpdateSyncCPU(opsExecuted);
+                m_System.SyncSystem();
             }
         }
     }
@@ -374,7 +380,7 @@ CCompiledFunc * CRecompiler::CompileCode()
     CheckRecompMem();
     WriteTrace(TraceRecompiler, TraceDebug, "Compile Block-Start: Program Counter: %X pAddr: %X", PROGRAM_COUNTER, pAddr);
 
-    CCodeBlock CodeBlock(m_MMU, PROGRAM_COUNTER);
+    CCodeBlock CodeBlock(m_System, PROGRAM_COUNTER);
     if (!CodeBlock.Compile())
     {
         return nullptr;
@@ -388,6 +394,11 @@ CCompiledFunc * CRecompiler::CompileCode()
     uint32_t CodeLen = CodeBlock.Finilize(*g_RecompPos);
     *g_RecompPos += CodeLen;
     LogCodeBlock(CodeBlock);
+
+    if (bSMM_StoreInstruc())
+    {
+        m_MMU.ClearMemoryWriteMap(CodeBlock.VAddrEnter() & ~0xFFF, 0xFFF);
+    }
 
     CCompiledFunc * Func = new CCompiledFunc(CodeBlock);
     std::pair<CCompiledFuncList::iterator, bool> ret = m_Functions.insert(CCompiledFuncList::value_type(Func->EnterPC(), Func));
@@ -405,7 +416,7 @@ CCompiledFunc * CRecompiler::CompileCode()
         WriteTrace(TraceRecompiler, TraceDebug, "Info->Function() = %X", Func->Function());
         std::string dumpline;
         uint32_t start_address = (uint32_t)(Func->Function()) & ~1;
-        for (uint8_t * ptr = (uint8_t *)start_address, * ptr_end = ((uint8_t *)start_address) + CodeLen; ptr < ptr_end; ptr++)
+        for (uint8_t *ptr = (uint8_t *)start_address, *ptr_end = ((uint8_t *)start_address) + CodeLen; ptr < ptr_end; ptr++)
         {
             if (dumpline.empty())
             {
@@ -431,31 +442,31 @@ CCompiledFunc * CRecompiler::CompileCode()
 
 void CRecompiler::ClearRecompCode_Phys(uint32_t Address, int length, REMOVE_REASON Reason)
 {
-    if (g_System->LookUpMode() == FuncFind_VirtualLookup)
+    if (m_System.LookUpMode() == FuncFind_VirtualLookup)
     {
         ClearRecompCode_Virt(Address + 0x80000000, length, Reason);
         ClearRecompCode_Virt(Address + 0xA0000000, length, Reason);
 
         uint32_t VAddr, Index = 0;
-        while (g_TLB->PAddrToVAddr(Address, VAddr, Index))
+        while (m_TLB.PAddrToVAddr(Address, VAddr, Index))
         {
             WriteTrace(TraceRecompiler, TraceInfo, "ClearRecompCode Vaddr %X  len: %d", VAddr, length);
             ClearRecompCode_Virt(VAddr, length, Reason);
         }
     }
-    else if (g_System->LookUpMode() == FuncFind_PhysicalLookup)
+    else if (m_System.LookUpMode() == FuncFind_PhysicalLookup)
     {
-        if (Address < g_System->RdramSize())
+        if (Address < m_System.RdramSize())
         {
             int ClearLen = ((length + 3) & ~3);
-            if (Address + ClearLen > g_System->RdramSize())
+            if (Address + ClearLen > m_System.RdramSize())
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
-                ClearLen = g_System->RdramSize() - Address;
+                ClearLen = m_System.RdramSize() - Address;
             }
             WriteTrace(TraceRecompiler, TraceInfo, "Resetting jump table, Addr: %X  len: %d", Address, ClearLen);
             memset((uint8_t *)JumpTable() + Address, 0, ClearLen);
-            if (g_System->bSMM_Protect())
+            if (m_System.bSMM_Protect())
             {
                 m_MMU.UnProtectMemory(Address + 0x80000000, Address + 0x80000004);
             }
@@ -472,7 +483,7 @@ void CRecompiler::ClearRecompCode_Virt(uint32_t Address, int length, REMOVE_REAS
     uint32_t AddressIndex, WriteStart;
     int DataInBlock, DataToWrite, DataLeft;
 
-    switch (g_System->LookUpMode())
+    switch (m_System.LookUpMode())
     {
     case FuncFind_VirtualLookup:
         AddressIndex = Address >> 0xC;
@@ -521,29 +532,26 @@ void CRecompiler::ResetLog()
 
 void CRecompiler::ResetMemoryStackPos()
 {
-#if defined(__aarch64__) || defined(__amd64__) || defined(_M_X64)
-    g_Notify->BreakPoint(__FILE__, __LINE__);
-#else
-    if (m_Registers.m_GPR[29].UW[0] == 0)
+    if (m_Reg.m_GPR[29].UW[0] == 0)
     {
         m_MemoryStack = 0;
         return;
     }
 
     uint32_t pAddr = 0;
-    if (m_MMU.VAddrToPAddr(m_Registers.m_GPR[29].UW[0], pAddr))
+    if (m_MMU.VAddrToPAddr(m_Reg.m_GPR[29].UW[0], pAddr))
     {
-        if (pAddr < m_MMU.RdramSize())
+        if (pAddr <= m_MMU.RdramSize())
         {
-            m_MemoryStack = (uint32_t)(m_MMU.Rdram() + pAddr);
+            m_MemoryStack = m_MMU.Rdram() + pAddr;
         }
         else if (pAddr > 0x04000000 && pAddr < 0x04001000)
         {
-            m_MemoryStack = (uint32_t)(m_MMU.Dmem() + pAddr - 0x04000000);
+            m_MemoryStack = m_MMU.Dmem() + (pAddr - 0x04000000);
         }
         else if (pAddr > 0x04001000 && pAddr < 0x04002000)
         {
-            m_MemoryStack = (uint32_t)(m_MMU.Imem() + pAddr - 0x04001000);
+            m_MemoryStack = m_MMU.Imem() + (pAddr - 0x04001000);
         }
         else
         {
@@ -552,10 +560,9 @@ void CRecompiler::ResetMemoryStackPos()
     }
     else
     {
-        WriteTrace(TraceRecompiler, TraceError, "Failed to translate SP address (%s)", m_Registers.m_GPR[29].UW[0]);
+        WriteTrace(TraceRecompiler, TraceError, "Failed to translate SP address (%s)", m_Reg.m_GPR[29].UW[0]);
         g_Notify->BreakPoint(__FILE__, __LINE__);
     }
-#endif
 }
 
 void CRecompiler::DumpFunctionTimes()

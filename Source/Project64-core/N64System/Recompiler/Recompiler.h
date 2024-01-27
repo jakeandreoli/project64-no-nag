@@ -14,8 +14,7 @@ class CRecompiler :
     protected CDebugSettings,
     public CRecompilerSettings,
     public CFunctionMap,
-    public CRecompMemory,
-    private CSystemRegisters
+    public CRecompMemory
 {
 public:
     enum REMOVE_REASON
@@ -34,7 +33,7 @@ public:
     typedef void (*DelayFunc)();
 
 public:
-    CRecompiler(CMipsMemoryVM & MMU, CRegisters & Registers, bool & EndEmulation);
+    CRecompiler(CN64System & System, bool & EndEmulation);
     ~CRecompiler();
 
     void Run();
@@ -50,7 +49,7 @@ public:
     void ResetFunctionTimes();
     void DumpFunctionTimes();
 
-    uint32_t & MemoryStackPos()
+    uint8_t *& MemoryStackPos()
     {
         return m_MemoryStack;
     }
@@ -81,10 +80,12 @@ private:
     void LogCodeBlock(const CCodeBlock & CodeBlock);
 
     CCompiledFuncList m_Functions;
+    CN64System & m_System;
     CMipsMemoryVM & m_MMU;
-    CRegisters & m_Registers;
+    CRegisters & m_Reg;
+    CTLB & m_TLB;
     bool & m_EndEmulation;
-    uint32_t m_MemoryStack;
+    uint8_t * m_MemoryStack;
     FUNCTION_PROFILE m_BlockProfile;
     uint32_t & PROGRAM_COUNTER;
     CLog * m_LogFile;

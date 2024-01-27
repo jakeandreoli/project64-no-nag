@@ -59,6 +59,7 @@ protected:
     const SettingID m_DefaultSetting;
 
     std::string FixSectionName(const char * Section);
+    static void CustomSortData(CIniFileBase::KeyValueVector & data);
 
     static CIniFile * m_SettingsIniFile;
     const std::string m_Section;

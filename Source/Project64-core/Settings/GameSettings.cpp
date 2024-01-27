@@ -4,7 +4,9 @@
 #include <Project64-core/N64System/SystemGlobals.h>
 #include <Project64-core/Settings/GameSettings.h>
 
+bool CGameSettings::m_RspMultiThreaded = false;
 bool CGameSettings::m_UseHleGfx = true;
+bool CGameSettings::m_UseHleAudio = false;
 bool CGameSettings::m_bSMM_StoreInstruc;
 bool CGameSettings::m_bSMM_Protect;
 bool CGameSettings::m_bSMM_ValidFunc;
@@ -24,6 +26,7 @@ bool CGameSettings::m_bFastSP = true;
 bool CGameSettings::m_b32Bit = true;
 bool CGameSettings::m_RspAudioSignal;
 bool CGameSettings::m_RegCaching;
+bool CGameSettings::m_FPURegCaching;
 bool CGameSettings::m_bLinkBlocks;
 uint32_t CGameSettings::m_LookUpMode; //FUNC_LOOKUP_METHOD
 SYSTEM_TYPE CGameSettings::m_SystemType = SYSTEM_NTSC;
@@ -33,6 +36,7 @@ DISK_SEEK_TYPE CGameSettings::m_DiskSeekTimingType = DiskSeek_Turbo;
 bool CGameSettings::m_EnhancmentOverClock = false;
 uint32_t CGameSettings::m_EnhancmentOverClockModifier = 1;
 bool CGameSettings::m_EnableDisk = false;
+bool CGameSettings::m_UnalignedDMA = false;
 
 int32_t CGameSettings::m_RefCount = 0;
 
@@ -58,7 +62,9 @@ CGameSettings::~CGameSettings()
 void CGameSettings::RefreshGameSettings()
 {
     WriteTrace(TraceN64System, TraceDebug, "start");
+    m_RspMultiThreaded = g_Settings->LoadBool(Game_RspMultiThreaded);
     m_UseHleGfx = g_Settings->LoadBool(Game_UseHleGfx);
+    m_UseHleAudio = g_Settings->LoadBool(Game_UseHleAudio);
     m_bSMM_StoreInstruc = g_Settings->LoadBool(Game_SMM_StoreInstruc);
     m_bSMM_Protect = g_Settings->LoadBool(Game_SMM_Protect);
     m_bSMM_ValidFunc = g_Settings->LoadBool(Game_SMM_ValidFunc);
@@ -81,6 +87,7 @@ void CGameSettings::RefreshGameSettings()
 #endif
     m_RspAudioSignal = g_Settings->LoadBool(Game_RspAudioSignal);
     m_RegCaching = g_Settings->LoadBool(Game_RegCache);
+    m_FPURegCaching = g_Settings->LoadBool(Game_FPURegCache);
     m_bLinkBlocks = g_Settings->LoadBool(Game_BlockLinking);
     m_LookUpMode = g_Settings->LoadDword(Game_FuncLookupMode);
     m_SystemType = (SYSTEM_TYPE)g_Settings->LoadDword(Game_SystemType);
@@ -99,6 +106,7 @@ void CGameSettings::RefreshGameSettings()
         m_OverClockModifier = 20;
     }
     m_DiskSeekTimingType = (DISK_SEEK_TYPE)g_Settings->LoadDword(Game_DiskSeekTiming);
+    m_UnalignedDMA = g_Settings->LoadBool(Game_UnalignedDMA);
     RefreshSyncToAudio();
     WriteTrace(TraceN64System, TraceDebug, "Done");
 }

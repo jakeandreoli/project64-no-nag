@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
-#include <Project64-core\N64System\Mips\R4300iInstruction.h>
 #include "DebuggerUI.h"
+#include <Project64-core\N64System\Mips\R4300iInstruction.h>
 
 #include "CPULog.h"
 #include "DMALog.h"
@@ -509,8 +509,8 @@ void CDebuggerUI::TLBChanged()
 // Exception handling - break on exception vector if exception breakpoint is set
 void CDebuggerUI::HandleCPUException(void)
 {
-    int exc = (g_Reg->CAUSE_REGISTER >> 2) & 0x1F;
-    int intr = (g_Reg->CAUSE_REGISTER >> 8) & 0xFF;
+    int exc = (g_Reg->CAUSE_REGISTER.Value >> 2) & 0x1F;
+    int intr = (g_Reg->CAUSE_REGISTER.Value >> 8) & 0xFF;
     int fpExc = (g_Reg->m_FPCR[31] >> 12) & 0x3F;
     int rcpIntr = g_Reg->MI_INTR_REG & 0x2F;
 
@@ -562,7 +562,7 @@ have_bp:
 
 void CDebuggerUI::HandleCartToRamDMA(void)
 {
-    COpInfo opInfo(R4300iOp::m_Opcode);
+    COpInfo opInfo(g_System->Opcode());
 
     uint32_t dmaRomAddr = g_Reg->PI_CART_ADDR_REG & 0x0FFFFFFF;
     uint32_t dmaRamAddr = g_Reg->PI_DRAM_ADDR_REG | 0x80000000;
@@ -588,7 +588,7 @@ void CDebuggerUI::CPUStepStarted()
 
     if (m_Breakpoints->NumMemLocks() > 0)
     {
-        COpInfo opInfo(R4300iOp::m_Opcode);
+        COpInfo opInfo(g_System->Opcode());
         bool bStoreOp = opInfo.IsStoreCommand();
 
         if (bStoreOp)
@@ -607,7 +607,7 @@ void CDebuggerUI::CPUStepStarted()
     {
         JSHookCpuStepEnv hookEnv;
         hookEnv.pc = g_Reg->m_PROGRAM_COUNTER;
-        hookEnv.opInfo = COpInfo(R4300iOp::m_Opcode);
+        hookEnv.opInfo = COpInfo(g_System->Opcode());
 
         if (m_ScriptSystem->HaveCpuExecCallbacks(hookEnv.pc))
         {
@@ -630,7 +630,7 @@ void CDebuggerUI::CPUStepStarted()
 
         if (pc == 0x80000000 || pc == 0x80000080 || pc == 0xA0000100 || pc == 0x80000180)
         {
-            if ((g_Reg->STATUS_REGISTER >> 1) & 3) // If EXL/ERL bits are set
+            if (g_Reg->STATUS_REGISTER.ExceptionLevel != 0 || g_Reg->STATUS_REGISTER.ErrorLevel != 0) // If EXL/ERL bits are set
             {
                 HandleCPUException();
             }
@@ -639,13 +639,11 @@ void CDebuggerUI::CPUStepStarted()
 
     if (m_Breakpoints->HaveRegBP())
     {
-        R4300iInstruction opInfo(g_Reg->m_PROGRAM_COUNTER, R4300iOp::m_Opcode.Value);
+        R4300iInstruction opInfo(g_Reg->m_PROGRAM_COUNTER, g_System->Opcode().Value);
 
         if (m_Breakpoints->HaveAnyGPRWriteBP())
         {
-            uint32_t nReg = 0;
-            opInfo.WritesGPR(nReg);
-
+            uint32_t nReg = opInfo.WritesGPR();
             if (nReg != 0 && m_Breakpoints->HaveGPRWriteBP(nReg))
             {
                 g_Settings->SaveBool(Debugger_SteppingOps, true);
@@ -687,7 +685,7 @@ void CDebuggerUI::CPUStepEnded()
         return;
     }
 
-    R4300iOpcode Opcode = R4300iOp::m_Opcode;
+    R4300iOpcode Opcode = g_System->Opcode();
     uint32_t op = Opcode.op;
     uint32_t funct = Opcode.funct;
 

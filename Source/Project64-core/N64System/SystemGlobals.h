@@ -14,9 +14,6 @@ extern CRecompiler * g_Recompiler;
 class CMipsMemoryVM;
 extern CMipsMemoryVM * g_MMU; // Memory of the N64
 
-class CTLB;
-extern CTLB * g_TLB; // TLB unit
-
 class CRegisters;
 extern CRegisters * g_Reg; // Current register set attached to the g_MMU
 
@@ -32,9 +29,6 @@ extern CN64Disk * g_Disk; // 64DD disk
 
 class CSystemTimer;
 extern CSystemTimer * g_SystemTimer;
-
-class CSystemEvents;
-extern CSystemEvents * g_SystemEvents;
 
 extern int32_t * g_NextTimer;
 extern uint32_t * g_TLBLoadAddress;

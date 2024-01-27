@@ -2,13 +2,12 @@
 #if defined(__i386__) || defined(_M_IX86)
 
 #include <Project64-core/N64System/Interpreter/InterpreterOps.h>
-#include <Project64-core/N64System/Mips/R4300iOpcode.h>
 #include <Project64-core/N64System/Mips/Register.h>
-#include <Project64-core/N64System/Recompiler/asmjit.h>
 #include <Project64-core/N64System/Recompiler/ExitInfo.h>
 #include <Project64-core/N64System/Recompiler/JumpInfo.h>
 #include <Project64-core/N64System/Recompiler/RecompilerOps.h>
 #include <Project64-core/N64System/Recompiler/RegInfo.h>
+#include <Project64-core/N64System/Recompiler/asmjit.h>
 #include <Project64-core/N64System/Recompiler/x86/x86ops.h>
 #include <Project64-core/Settings/GameSettings.h>
 #include <Project64-core/Settings/N64SystemSettings.h>
@@ -18,13 +17,16 @@ class CCodeBlock;
 class CCodeSection;
 
 class CX86RecompilerOps :
-    protected R4300iOp,
+    public CRecompilerOpsBase,
     protected CN64SystemSettings,
     protected CRecompilerSettings,
+    protected CLogSettings,
     private CGameSettings
 {
+    friend CX86RegInfo;
+
 public:
-    CX86RecompilerOps(CMipsMemoryVM & MMU, CCodeBlock & CodeBlock);
+    CX86RecompilerOps(CN64System & m_System, CCodeBlock & CodeBlock);
     ~CX86RecompilerOps();
 
     // Trap functions
@@ -95,6 +97,7 @@ public:
     void SPECIAL_JALR();
     void SPECIAL_SYSCALL();
     void SPECIAL_BREAK();
+    void SPECIAL_SYNC();
     void SPECIAL_MFLO();
     void SPECIAL_MTLO();
     void SPECIAL_MFHI();
@@ -207,6 +210,8 @@ public:
     // Other functions
     void UnknownOpcode();
 
+    void RecordLLAddress(const asmjit::x86::Gp & AddressReg);
+    void RecordLLAddress(uint64_t Address);
     void ClearCachedInstructionInfo();
     void FoundMemoryBreakpoint();
     void PreReadInstruction();
@@ -217,14 +222,18 @@ public:
     void EnterCodeBlock();
     void ExitCodeBlock();
     void CompileExitCode();
+    void CompileCheckFPUInput32(asmjit::x86::Gp RegPointer, bool Conv = false);
+    void CompileCheckFPUResult32(int32_t DestReg);
+    void CompileCheckFPUResult64(asmjit::x86::Gp RegPointer);
     void CompileCop1Test();
+    void CompileInitFpuOperation(CRegBase::FPU_ROUND RoundMethod);
     void CompileInPermLoop(CRegInfo & RegSet, uint32_t ProgramCounter);
     void SyncRegState(const CRegInfo & SyncTo);
     bool SetupRegisterForLoop(CCodeBlock & BlockInfo, const CRegInfo & RegSet);
     CRegInfo & GetRegWorkingSet(void);
     void SetRegWorkingSet(const CRegInfo & RegInfo);
     bool InheritParentInfo();
-    void LinkJump(CJumpInfo & JumpInfo, uint32_t SectionID = -1, uint32_t FromSectionID = -1);
+    void LinkJump(CJumpInfo & JumpInfo);
     void JumpToSection(CCodeSection * Section);
     void JumpToUnknown(CJumpInfo * JumpInfo);
     void SetCurrentPC(uint32_t ProgramCounter);
@@ -233,6 +242,7 @@ public:
     void SetNextStepType(PIPELINE_STAGE StepType);
     PIPELINE_STAGE GetNextStepType(void);
     const R4300iOpcode & GetOpcode(void) const;
+    const R4300iInstruction & GetInstruction(void) const;
     void PreCompileOpcode(void);
     void PostCompileOpcode(void);
     void CompileExit(uint32_t JumpPC, uint32_t TargetPC, CRegInfo & ExitRegSet, ExitReason Reason);
@@ -253,181 +263,12 @@ public:
         return m_Assembler;
     }
 
-    // Helper functions
-    typedef CRegInfo::REG_STATE REG_STATE;
-
-    REG_STATE GetMipsRegState(int32_t Reg)
-    {
-        return m_RegWorkingSet.GetMipsRegState(Reg);
-    }
-    uint64_t GetMipsReg(int32_t Reg)
-    {
-        return m_RegWorkingSet.GetMipsReg(Reg);
-    }
-    int64_t GetMipsReg_S(int32_t Reg)
-    {
-        return m_RegWorkingSet.GetMipsReg_S(Reg);
-    }
-    uint32_t GetMipsRegLo(int32_t Reg)
-    {
-        return m_RegWorkingSet.GetMipsRegLo(Reg);
-    }
-    int32_t GetMipsRegLo_S(int32_t Reg)
-    {
-        return m_RegWorkingSet.GetMipsRegLo_S(Reg);
-    }
-    uint32_t GetMipsRegHi(int32_t Reg)
-    {
-        return m_RegWorkingSet.GetMipsRegHi(Reg);
-    }
-    int32_t GetMipsRegHi_S(int32_t Reg)
-    {
-        return m_RegWorkingSet.GetMipsRegHi_S(Reg);
-    }
-    asmjit::x86::Gp GetMipsRegMapLo(int32_t Reg)
-    {
-        return m_RegWorkingSet.GetMipsRegMapLo(Reg);
-    }
-    asmjit::x86::Gp GetMipsRegMapHi(int32_t Reg)
-    {
-        return m_RegWorkingSet.GetMipsRegMapHi(Reg);
-    }
-
-    bool IsKnown(int32_t Reg)
-    {
-        return m_RegWorkingSet.IsKnown(Reg);
-    }
-    bool IsUnknown(int32_t Reg)
-    {
-        return m_RegWorkingSet.IsUnknown(Reg);
-    }
-    bool IsMapped(int32_t Reg)
-    {
-        return m_RegWorkingSet.IsMapped(Reg);
-    }
-    bool IsConst(int32_t Reg)
-    {
-        return m_RegWorkingSet.IsConst(Reg);
-    }
-    bool IsSigned(int32_t Reg)
-    {
-        return m_RegWorkingSet.IsSigned(Reg);
-    }
-    bool IsUnsigned(int32_t Reg)
-    {
-        return m_RegWorkingSet.IsUnsigned(Reg);
-    }
-    bool Is32Bit(int32_t Reg)
-    {
-        return m_RegWorkingSet.Is32Bit(Reg);
-    }
-    bool Is64Bit(int32_t Reg)
-    {
-        return m_RegWorkingSet.Is64Bit(Reg);
-    }
-    bool Is32BitMapped(int32_t Reg)
-    {
-        return m_RegWorkingSet.Is32BitMapped(Reg);
-    }
-    bool Is64BitMapped(int32_t Reg)
-    {
-        return m_RegWorkingSet.Is64BitMapped(Reg);
-    }
-
-    void FixRoundModel(CRegInfo::FPU_ROUND RoundMethod)
-    {
-        m_RegWorkingSet.FixRoundModel(RoundMethod);
-    }
-    void ChangeFPURegFormat(int32_t Reg, CRegInfo::FPU_STATE OldFormat, CRegInfo::FPU_STATE NewFormat, CRegInfo::FPU_ROUND RoundingModel)
-    {
-        m_RegWorkingSet.ChangeFPURegFormat(Reg, OldFormat, NewFormat, RoundingModel);
-    }
-    void Load_FPR_ToTop(int32_t Reg, int32_t RegToLoad, CRegInfo::FPU_STATE Format)
-    {
-        m_RegWorkingSet.Load_FPR_ToTop(Reg, RegToLoad, Format);
-    }
-    bool RegInStack(int32_t Reg, CRegInfo::FPU_STATE Format)
-    {
-        return m_RegWorkingSet.RegInStack(Reg, Format);
-    }
-    const asmjit::x86::St & StackPosition(int32_t Reg)
-    {
-        return m_RegWorkingSet.StackPosition(Reg);
-    }
-    void UnMap_AllFPRs()
-    {
-        m_RegWorkingSet.UnMap_AllFPRs();
-    }
-    void UnMap_FPR(uint32_t Reg, bool WriteBackValue)
-    {
-        m_RegWorkingSet.UnMap_FPR(Reg, WriteBackValue);
-    }
-
-    const asmjit::x86::Gp & FreeX86Reg()
-    {
-        return m_RegWorkingSet.FreeX86Reg();
-    }
-    const asmjit::x86::Gp & Free8BitX86Reg()
-    {
-        return m_RegWorkingSet.Free8BitX86Reg();
-    }
-    void Map_GPR_32bit(int32_t Reg, bool SignValue, int32_t MipsRegToLoad)
-    {
-        m_RegWorkingSet.Map_GPR_32bit(Reg, SignValue, MipsRegToLoad);
-    }
-    void Map_GPR_64bit(int32_t Reg, int32_t MipsRegToLoad)
-    {
-        m_RegWorkingSet.Map_GPR_64bit(Reg, MipsRegToLoad);
-    }
-    asmjit::x86::Gp Get_MemoryStack()
-    {
-        return m_RegWorkingSet.Get_MemoryStack();
-    }
-    asmjit::x86::Gp Map_MemoryStack(const asmjit::x86::Gp & Reg, bool bMapRegister, bool LoadValue = true)
-    {
-        return m_RegWorkingSet.Map_MemoryStack(Reg, bMapRegister, LoadValue);
-    }
-    asmjit::x86::Gp Map_TempReg(const asmjit::x86::Gp & Reg, int32_t MipsReg, bool LoadHiWord, bool Reg8Bit)
-    {
-        return m_RegWorkingSet.Map_TempReg(Reg, MipsReg, LoadHiWord, Reg8Bit);
-    }
-    void ProtectGPR(uint32_t Reg)
-    {
-        m_RegWorkingSet.ProtectGPR(Reg);
-    }
-    void UnProtectGPR(uint32_t Reg)
-    {
-        m_RegWorkingSet.UnProtectGPR(Reg);
-    }
-    void ResetX86Protection()
-    {
-        m_RegWorkingSet.ResetX86Protection();
-    }
-    const asmjit::x86::Gp & UnMap_TempReg()
-    {
-        return m_RegWorkingSet.UnMap_TempReg();
-    }
-    void UnMap_GPR(uint32_t Reg, bool WriteBackValue)
-    {
-        m_RegWorkingSet.UnMap_GPR(Reg, WriteBackValue);
-    }
-    bool UnMap_X86reg(const asmjit::x86::Gp & Reg)
-    {
-        return m_RegWorkingSet.UnMap_X86reg(Reg);
-    }
-
-public:
-    uint32_t CompilePC()
-    {
-        return m_CompilePC;
-    }
-
 private:
     CX86RecompilerOps(const CX86RecompilerOps &);
     CX86RecompilerOps & operator=(const CX86RecompilerOps &);
 
     asmjit::x86::Gp BaseOffsetAddress(bool UseBaseRegister);
-    void CompileLoadMemoryValue(asmjit::x86::Gp AddressReg, asmjit::x86::Gp ValueReg, const asmjit::x86::Gp & ValueRegHi, uint8_t ValueSize, bool SignExtend);
+    void CompileLoadMemoryValue(asmjit::x86::Gp & AddressReg, asmjit::x86::Gp ValueReg, const asmjit::x86::Gp & ValueRegHi, uint8_t ValueSize, bool SignExtend);
     void CompileStoreMemoryValue(asmjit::x86::Gp AddressReg, asmjit::x86::Gp ValueReg, const asmjit::x86::Gp & ValueRegHi, uint64_t Value, uint8_t ValueSize);
 
     void SB_Const(uint32_t Value, uint32_t Addr);
@@ -443,18 +284,29 @@ private:
     void SW(bool bCheckLLbit);
     void CompileExit(uint32_t JumpPC, uint32_t TargetPC, CRegInfo & ExitRegSet, ExitReason Reason, bool CompileNow, void (CX86Ops::*x86Jmp)(const char * LabelName, asmjit::Label & JumpLabel));
     void ResetMemoryStack();
+    void COP1_S_CVT(CRegBase::FPU_ROUND RoundMethod, CRegInfo::FPU_STATE OldFormat, CRegInfo::FPU_STATE NewFormat);
+
+    static void x86CompilerBreakPoint();
+    static void x86BreakPointDelaySlot();
+    static void x86MemoryBreakPoint();
+    static void x86TestReadBreakPoint8();
+    static void x86TestReadBreakPoint16();
+    static void x86TestReadBreakPoint32();
+    static void x86TestReadBreakPoint64();
+    static void x86TestWriteBreakPoint8();
+    static void x86TestWriteBreakPoint16();
+    static void x86TestWriteBreakPoint32();
+    static void x86TestWriteBreakPoint64();
 
     EXIT_LIST m_ExitInfo;
-    CMipsMemoryVM & m_MMU;
-    CCodeBlock & m_CodeBlock;
     CX86Ops m_Assembler;
     PIPELINE_STAGE m_PipelineStage;
-    uint32_t m_CompilePC;
-    R4300iOpcode m_Opcode;
+    const uint32_t & m_CompilePC;
     CX86RegInfo m_RegWorkingSet;
-    CCodeSection * m_Section;
     CRegInfo m_RegBeforeDelay;
     bool m_EffectDelaySlot;
+    static uint32_t m_RoundingModeValue;
+    static bool m_TempMemoryUsed;
     static uint32_t m_TempValue32;
     static uint64_t m_TempValue64;
     static uint32_t m_BranchCompare;

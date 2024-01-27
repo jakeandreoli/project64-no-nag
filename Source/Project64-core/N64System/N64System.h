@@ -37,8 +37,6 @@ enum CN64SystemCB
 
 class CN64System :
     public CLogging,
-    public CTLB_CB,
-    private CSystemEvents,
     protected CN64SystemSettings,
     public CGameSettings,
     protected CDebugSettings
@@ -86,13 +84,17 @@ public:
     {
         return m_Limiter.GetBaseSpeed();
     }
+    R4300iOpcode Opcode(void) const
+    {
+        return m_OpCodes.Opcode();
+    }
+    CTLB & TLB();
     void Reset(bool bInitReg, bool ClearMenory);
     void GameReset();
     void PluginReset();
     void ApplyGSButton(void);
 
     void Pause();
-    void RunRSP();
     bool SaveState();
     bool LoadState(const char * FileName);
     bool LoadState();
@@ -103,9 +105,7 @@ public:
     uint32_t m_CurrentSP;
 #endif
     // For sync CPU
-    void UpdateSyncCPU(CN64System * const SecondCPU, uint32_t const Cycles);
-    void SyncCPU(CN64System * const SecondCPU);
-    void SyncCPUPC(CN64System * const SecondCPU);
+    void UpdateSyncCPU(uint32_t const Cycles);
     void SyncSystem();
     void SyncSystemPC();
 
@@ -137,18 +137,18 @@ private:
     friend class CRSP_Plugin;
     friend class CControl_Plugin;
 
-    // Recompiler has access to manipulate and call functions
     friend class CSystemTimer;
     friend class CRecompiler;
+    friend class CRecompilerOpsBase;
     friend class CX86RecompilerOps;
     friend class CArmRecompilerOps;
+    friend class CCodeBlock;
     friend class CMipsMemoryVM;
-    friend class CInterpreterCPU;
-    friend class R4300iOp32;
     friend class R4300iOp;
-
+    friend class CSystemEvents;
     friend class VideoInterfaceHandler;
     friend class PifRamHandler;
+    friend class CRegisters;
 
     // Used for loading and potentially executing the CPU in its own thread
     static void StartEmulationThread(CThread * thread);
@@ -157,11 +157,9 @@ private:
 
     void ExecuteCPU();
     void RefreshScreen();
-    void DumpSyncErrors(CN64System * SecondCPU);
+    void DumpSyncErrors();
     void StartEmulation2(bool NewThread);
     bool SetActiveSystem(bool bActive = true);
-    void InitRegisters(bool bPostPif, CMipsMemoryVM & MMU);
-    void DisplayRSPListCount();
     void NotifyCallback(CN64SystemCB Type);
     void DelayedJump(uint32_t JumpLocation);
     void DelayedRelativeJump(uint32_t RelativeLocation);
@@ -175,17 +173,17 @@ private:
     void CpuStopped();
 
     // Functions in CTLB_CB
-    void TLB_Mapped(uint32_t VAddr, uint32_t Len, uint32_t PAddr, bool bReadOnly);
     void TLB_Unmaped(uint32_t VAddr, uint32_t Len);
-    void TLB_Changed();
 
     SETTING_CALLBACK m_Callback;
     CPlugins * const m_Plugins; // The plugin container
     CPlugins * m_SyncPlugins;
     CN64System * m_SyncCPU;
+    CSystemEvents m_SystemEvents;
     CMipsMemoryVM m_MMU_VM;
-    CTLB m_TLB;
     CRegisters m_Reg;
+    CTLB m_TLB;
+    R4300iOp m_OpCodes;
     CMempak m_Mempak;
     CFramePerSecond m_FPS;
     CProfiling m_CPU_Usage; // Used to track the CPU usage
@@ -195,7 +193,6 @@ private:
     int32_t m_NextTimer;
     CSystemTimer m_SystemTimer;
     bool m_bCleanFrameBox;
-    bool m_RspBroke;
     uint32_t m_Buttons[4];
     bool m_TestTimer;
     PIPELINE_STAGE m_PipelineStage;
@@ -217,14 +214,12 @@ private:
     // Handle to pause mutex
     SyncEvent m_hPauseEvent;
 
-    // Number of Alist and Dlist sent to the RSP
-    uint32_t m_AlistCount, m_DlistCount, m_UnknownCount;
-
     // List of function that have been called (used in profiling)
     FUNC_CALLS m_FunctionCalls;
 
     // List of save state file IDs
-    const uint32_t SaveID_0 = 0x23D8A6C8; // Main save state info (*.pj)
-    const uint32_t SaveID_1 = 0x56D2CD23; // Extra data v1 (system timing) info (*.dat)
-    const uint32_t SaveID_2 = 0x750A6BEB; // Extra data v2 (timing + disk registers) (*.dat)
+    const uint32_t SaveID_0 = 0x23D8A6C8;   // Main save state info (*.pj)
+    const uint32_t SaveID_0_1 = 0x25EF3FAC; // Main save state info (*.pj)
+    const uint32_t SaveID_1 = 0x56D2CD23;   // Extra data v1 (system timing) info (*.dat)
+    const uint32_t SaveID_2 = 0x750A6BEB;   // Extra data v2 (timing + disk registers) (*.dat)
 };

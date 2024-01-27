@@ -56,9 +56,7 @@
     <ClCompile Include="N64System\Enhancement\EnhancementList.cpp" />
     <ClCompile Include="N64System\Enhancement\Enhancements.cpp" />
     <ClCompile Include="N64System\FramePerSecond.cpp" />
-    <ClCompile Include="N64System\Interpreter\InterpreterCPU.cpp" />
     <ClCompile Include="N64System\Interpreter\InterpreterOps.cpp" />
-    <ClCompile Include="N64System\Interpreter\InterpreterOps32.cpp" />
     <ClCompile Include="N64System\MemoryHandler\AudioInterfaceHandler.cpp" />
     <ClCompile Include="N64System\MemoryHandler\CartridgeDomain1Address1Handler.cpp" />
     <ClCompile Include="N64System\MemoryHandler\CartridgeDomain1Address3Handler.cpp" />
@@ -105,6 +103,7 @@
     <ClCompile Include="N64System\Recompiler\LoopAnalysis.cpp" />
     <ClCompile Include="N64System\Recompiler\Recompiler.cpp" />
     <ClCompile Include="N64System\Recompiler\RecompilerMemory.cpp" />
+    <ClCompile Include="N64System\Recompiler\RecompilerOps.cpp" />
     <ClCompile Include="N64System\Recompiler\RegBase.cpp" />
     <ClCompile Include="N64System\Recompiler\x64-86\x64ops.cpp" />
     <ClCompile Include="N64System\Recompiler\x64-86\x64RecompilerOps.cpp" />
@@ -135,11 +134,12 @@
     <ClCompile Include="Settings\SettingType\SettingsType-ApplicationPath.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-GameSetting.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-GameSettingIndex.cpp" />
+    <ClCompile Include="Settings\SettingType\SettingsType-RDB.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-RDBCpuType.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-RDBOnOff.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-RDBRamSize.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-RDBSaveChip.cpp" />
-    <ClCompile Include="Settings\SettingType\SettingsType-RDBYesNo.cpp" />
+    <ClCompile Include="Settings\SettingType\SettingsType-RDBUser.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-RelativePath.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-RomDatabase.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-RomDatabaseIndex.cpp" />
@@ -175,8 +175,6 @@
     <ClInclude Include="N64System\Enhancement\EnhancementList.h" />
     <ClInclude Include="N64System\Enhancement\Enhancements.h" />
     <ClInclude Include="N64System\FramePerSecond.h" />
-    <ClInclude Include="N64System\Interpreter\InterpreterCPU.h" />
-    <ClInclude Include="N64System\Interpreter\InterpreterOps32.h" />
     <ClInclude Include="N64System\Interpreter\InterpreterOps.h" />
     <ClInclude Include="N64System\MemoryHandler\AudioInterfaceHandler.h" />
     <ClInclude Include="N64System\MemoryHandler\CartridgeDomain1Address1Handler.h" />
@@ -196,8 +194,6 @@
     <ClInclude Include="N64System\MemoryHandler\SPRegistersHandler.h" />
     <ClInclude Include="N64System\MemoryHandler\VideoInterfaceHandler.h" />
     <ClInclude Include="N64System\Mips\Disk.h" />
-    <ClInclude Include="N64System\Mips\Eeprom.h" />
-    <ClInclude Include="N64System\Mips\FlashRam.h" />
     <ClInclude Include="N64System\Mips\GBCart.h" />
     <ClInclude Include="N64System\Mips\MemoryVirtualMem.h" />
     <ClInclude Include="N64System\Mips\Mempak.h" />
@@ -205,12 +201,10 @@
     <ClInclude Include="N64System\Mips\R4300iOpcode.h" />
     <ClInclude Include="N64System\Mips\Register.h" />
     <ClInclude Include="N64System\Mips\Rumblepak.h" />
-    <ClInclude Include="N64System\Mips\Sram.h" />
     <ClInclude Include="N64System\Mips\SystemEvents.h" />
     <ClInclude Include="N64System\Mips\SystemTiming.h" />
     <ClInclude Include="N64System\Mips\TLB.h" />
     <ClInclude Include="N64System\Mips\Transferpak.h" />
-    <ClInclude Include="N64System\Mips\TranslateVaddr.h" />
     <ClInclude Include="N64System\N64Disk.h" />
     <ClInclude Include="N64System\N64Rom.h" />
     <ClInclude Include="N64System\N64System.h" />
@@ -270,11 +264,11 @@
     <ClInclude Include="Settings\SettingType\SettingsType-Base.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-GameSetting.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-GameSettingIndex.h" />
+    <ClInclude Include="Settings\SettingType\SettingsType-RDB.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-RDBCpuType.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-RDBOnOff.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-RDBRamSize.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-RDBSaveChip.h" />
-    <ClInclude Include="Settings\SettingType\SettingsType-RDBYesNo.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-RelativePath.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-RomDatabase.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-RomDatabaseIndex.h" />
@@ -284,6 +278,7 @@
     <ClInclude Include="Settings\SettingType\SettingsType-TempBool.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-TempNumber.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-TempString.h" />
+    <ClInclude Include="Settings\SettingType\SettingsType-RDBUser.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="TraceModulesProject64.h" />
   </ItemGroup>
@@ -298,6 +293,9 @@
       <Project>{3326e128-33af-422c-bb7c-67cc6b915610}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Common\Common.vcxproj" />
+    <ProjectReference Include="..\Project64-rsp-core\Project64-rsp-core.vcxproj">
+      <Project>{7598f6b8-9da6-4897-b26f-f6865f824bf4}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\UpdateVersion\UpdateVersion.vcxproj">
       <Project>{1968162c-0793-491d-91a1-81645a24d399}</Project>
     </ProjectReference>

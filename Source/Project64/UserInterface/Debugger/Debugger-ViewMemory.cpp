@@ -746,7 +746,7 @@ LRESULT CDebugMemoryView::OnHxGetByteInfo(LPNMHDR lpNMHDR)
 
     if (g_Settings->LoadBool(Debugger_SteppingOps))
     {
-        COpInfo opInfo(R4300iOp::m_Opcode);
+        COpInfo opInfo(g_System->Opcode());
         if (opInfo.IsStoreCommand())
         {
             cpuReadWriteAddress = opInfo.GetLoadStoreAddress();
@@ -991,10 +991,10 @@ LRESULT CDebugMemoryView::OnHxPaste(LPNMHDR lpNMHDR)
         size_t length = strlen(text);
         for (size_t i = 0; i < length; i++)
         {
-            SetByte(nmp->address + i, text[i]);
+            SetByte((int)((INT_PTR)(nmp->address + i)), text[i]);
         }
 
-        retDataLength = length;
+        retDataLength = (int)((INT_PTR)(length));
     }
 
     GlobalUnlock(hData);
@@ -1093,7 +1093,7 @@ void CDebugMemoryView::OpenNewTab(uint32_t address, bool bVirtual, int numBytesP
         {
             if (m_TabData[i].address == address && m_TabData[i].bVirtual == bVirtual)
             {
-                m_TabCtrl.SetCurSel(i);
+                m_TabCtrl.SetCurSel((int)((INT_PTR)(i)));
                 TabSelChanged();
                 return;
             }

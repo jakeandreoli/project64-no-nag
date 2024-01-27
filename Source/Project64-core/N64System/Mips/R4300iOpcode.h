@@ -79,6 +79,8 @@ enum R4300iOpCodes
     R4300i_LUI = 15,
     R4300i_CP0 = 16,
     R4300i_CP1 = 17,
+    R4300i_CP2 = 18,
+    R4300i_CP3 = 19,
     R4300i_BEQL = 20,
     R4300i_BNEL = 21,
     R4300i_BLEZL = 22,
@@ -106,6 +108,7 @@ enum R4300iOpCodes
     R4300i_CACHE = 47,
     R4300i_LL = 48,
     R4300i_LWC1 = 49,
+    R4300i_LLD = 52,
     R4300i_LDC1 = 53,
     R4300i_LD = 55,
     R4300i_SC = 56,
@@ -267,4 +270,14 @@ enum R4300iCOP1FuntOpCodes
     R4300i_COP1_FUNCT_C_NGE = 61,
     R4300i_COP1_FUNCT_C_LE = 62,
     R4300i_COP1_FUNCT_C_NGT = 63,
+};
+
+enum R4300iCOP2OpCodes
+{
+    R4300i_COP2_MF = 0,
+    R4300i_COP2_DMF = 1,
+    R4300i_COP2_CF = 2,
+    R4300i_COP2_MT = 4,
+    R4300i_COP2_DMT = 5,
+    R4300i_COP2_CT = 6,
 };

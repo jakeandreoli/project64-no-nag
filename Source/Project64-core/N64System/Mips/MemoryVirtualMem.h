@@ -48,8 +48,8 @@ class CArmRecompilerOps;
 #endif
 
 class CMipsMemoryVM :
-    private R4300iOp,
-    private CGameSettings
+    private CGameSettings,
+    private CDebugSettings
 {
 public:
     CMipsMemoryVM(CN64System & System, bool SavesReadOnly);
@@ -61,11 +61,11 @@ public:
     bool Initialize(bool SyncSystem);
     void Reset(bool EraseMemory);
 
-    uint8_t * Rdram() const
+    uint8_t *& Rdram()
     {
         return m_RDRAM;
     }
-    uint32_t RdramSize() const
+    const uint32_t & RdramSize() const
     {
         return m_AllocatedRdramSize;
     }
@@ -148,7 +148,6 @@ public:
         return m_PifRamHandler;
     };
 
-
 private:
     CMipsMemoryVM();
     CMipsMemoryVM(const CMipsMemoryVM &);
@@ -162,18 +161,29 @@ private:
 #endif
 
     static void RdramChanged(CMipsMemoryVM * _this);
-    static void ChangeSpStatus();
     static void ChangeMiIntrMask();
 
-    bool LB_NonMemory(uint32_t VAddr, uint8_t & Value);
-    bool LH_NonMemory(uint32_t VAddr, uint16_t & Value);
-    bool LW_NonMemory(uint32_t VAddr, uint32_t & Value);
-    bool LD_NonMemory(uint32_t VAddr, uint64_t & Value);
+    bool MemoryBreakpoint();
 
-    bool SB_NonMemory(uint32_t VAddr, uint32_t Value);
-    bool SH_NonMemory(uint32_t VAddr, uint32_t Value);
-    bool SW_NonMemory(uint32_t VAddr, uint32_t Value);
-    bool SD_NonMemory(uint32_t VAddr, uint64_t Value);
+    bool LB_VAddr32(uint32_t VAddr, uint8_t & Value);
+    bool LH_VAddr32(uint32_t VAddr, uint16_t & Value);
+    bool LW_VAddr32(uint32_t VAddr, uint32_t & Value);
+    bool LD_VAddr32(uint32_t VAddr, uint64_t & Value);
+
+    bool LB_PhysicalAddress(uint32_t PAddr, uint8_t & Value);
+    bool LH_PhysicalAddress(uint32_t PAddr, uint16_t & Value);
+    bool LW_PhysicalAddress(uint32_t PAddr, uint32_t & Value);
+    bool LD_PhysicalAddress(uint32_t PAddr, uint64_t & Value);
+
+    bool SB_VAddr32(uint32_t VAddr, uint32_t Value);
+    bool SH_VAddr32(uint32_t VAddr, uint32_t Value);
+    bool SW_VAddr32(uint32_t VAddr, uint32_t Value);
+    bool SD_VAddr32(uint32_t VAddr, uint64_t Value);
+
+    bool SB_PhysicalAddress(uint32_t PAddr, uint32_t Value);
+    bool SH_PhysicalAddress(uint32_t PAddr, uint32_t Value);
+    bool SW_PhysicalAddress(uint32_t PAddr, uint32_t Value);
+    bool SD_PhysicalAddress(uint32_t PAddr, uint64_t Value);
 
 #if defined(__i386__) || defined(_M_IX86)
 
@@ -201,6 +211,7 @@ private:
     static uint8_t *m_Reserve1, *m_Reserve2;
     CN64System & m_System;
     CRegisters & m_Reg;
+    CTLB & m_TLB;
     AudioInterfaceHandler m_AudioInterfaceHandler;
     CartridgeDomain1Address1Handler m_CartridgeDomain1Address1Handler;
     CartridgeDomain1Address3Handler m_CartridgeDomain1Address3Handler;

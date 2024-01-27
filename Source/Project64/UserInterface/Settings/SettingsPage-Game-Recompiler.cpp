@@ -15,8 +15,10 @@ CGameRecompilePage::CGameRecompilePage(HWND hParent, const RECT & rcDispay)
     SetDlgItemText(IDC_FUNCFIND_TEXT, wGS(ROM_FUNC_FIND).c_str());
 
     SetDlgItemText(IDC_ROM_REGCACHE, wGS(ROM_REG_CACHE).c_str());
+    SetDlgItemText(IDC_ROM_FPUREGCACHE, wGS(ROM_FPU_REG_CACHE).c_str());
     SetDlgItemText(IDC_BLOCK_LINKING, wGS(ADVANCE_ABL).c_str());
     SetDlgItemText(IDC_ROM_FASTSP, wGS(ROM_FAST_SP).c_str());
+    SetDlgItemText(IDC_ROM_32BIT, wGS(ROM_32BIT).c_str());
 
     SetDlgItemText(IDC_SMM_FRAME, wGS(ADVANCE_SMCM).c_str());
     SetDlgItemText(IDC_SMM_CACHE, wGS(ADVANCE_SMM_CACHE).c_str());
@@ -28,6 +30,7 @@ CGameRecompilePage::CGameRecompilePage(HWND hParent, const RECT & rcDispay)
     m_SelfModGroup.Attach(GetDlgItem(IDC_SMM_FRAME));
 
     AddModCheckBox(GetDlgItem(IDC_ROM_REGCACHE), Game_RegCache);
+    AddModCheckBox(GetDlgItem(IDC_ROM_FPUREGCACHE), Game_FPURegCache);
     AddModCheckBox(GetDlgItem(IDC_BLOCK_LINKING), Game_BlockLinking);
     AddModCheckBox(GetDlgItem(IDC_SMM_CACHE), Game_SMM_Cache);
     AddModCheckBox(GetDlgItem(IDC_SMM_DMA), Game_SMM_PIDMA);
@@ -36,6 +39,7 @@ CGameRecompilePage::CGameRecompilePage(HWND hParent, const RECT & rcDispay)
     AddModCheckBox(GetDlgItem(IDC_SMM_PROTECT), Game_SMM_Protect);
     AddModCheckBox(GetDlgItem(IDC_SMM_STORE), Game_SMM_StoreInstruc);
     AddModCheckBox(GetDlgItem(IDC_ROM_FASTSP), Game_FastSP);
+    AddModCheckBox(GetDlgItem(IDC_ROM_32BIT), Game_32Bit);
 
     CModifiedComboBox * ComboBox;
     ComboBox = AddModComboBox(GetDlgItem(IDC_CPU_TYPE), Game_CpuType);

@@ -2,7 +2,6 @@
 
 #include <Project64-core/Debugger.h>
 #include <Project64-core/ExceptionHandler.h>
-#include <Project64-core/N64System/Interpreter/InterpreterCPU.h>
 #include <Project64-core/N64System/Mips/MemoryVirtualMem.h>
 #include <Project64-core/N64System/Mips/R4300iInstruction.h>
 #include <Project64-core/N64System/Mips/R4300iOpcode.h>
@@ -84,7 +83,7 @@ void CCodeSection::GenerateSectionLinkage()
             }
             else if (TargetSection[i] == nullptr && JumpInfo[i]->FallThrough)
             {
-                m_RecompilerOps->LinkJump(*JumpInfo[i], (uint32_t)-1);
+                m_RecompilerOps->LinkJump(*JumpInfo[i]);
                 if (JumpInfo[i]->LinkAddress != (uint32_t)-1)
                 {
                     JumpInfo[i]->RegSet.UnMap_GPR(31, false);
@@ -105,7 +104,7 @@ void CCodeSection::GenerateSectionLinkage()
                 {
                     continue;
                 }
-                m_RecompilerOps->LinkJump(*JumpInfo[i], (uint32_t)-1);
+                m_RecompilerOps->LinkJump(*JumpInfo[i]);
                 if (JumpInfo[i]->LinkAddress != (uint32_t)-1)
                 {
                     JumpInfo[i]->RegSet.UnMap_GPR(31, false);
@@ -151,7 +150,7 @@ void CCodeSection::GenerateSectionLinkage()
         if (TargetSection[i]->m_EnterLabel.isValid())
         {
             JumpInfo[i]->FallThrough = false;
-            m_RecompilerOps->LinkJump(*JumpInfo[i], TargetSection[i]->m_SectionID);
+            m_RecompilerOps->LinkJump(*JumpInfo[i]);
             if (JumpInfo[i]->LinkAddress != (uint32_t)-1)
             {
                 JumpInfo[i]->RegSet.UnMap_GPR(31, false);
@@ -252,7 +251,7 @@ void CCodeSection::GenerateSectionLinkage()
         if (TargetSection[i] == nullptr)
         {
             m_CodeBlock.Log("ExitBlock (from %d):", m_SectionID);
-            m_RecompilerOps->LinkJump(*JumpInfo[i], (uint32_t)-1);
+            m_RecompilerOps->LinkJump(*JumpInfo[i]);
             if (JumpInfo[i]->LinkAddress != (uint32_t)-1)
             {
                 JumpInfo[i]->RegSet.UnMap_GPR(31, false);
@@ -276,7 +275,7 @@ void CCodeSection::GenerateSectionLinkage()
             stdstr_f Label("Section_%d (from %d):", TargetSection[i]->m_SectionID, m_SectionID);
 
             m_CodeBlock.Log(Label.c_str());
-            m_RecompilerOps->LinkJump(*JumpInfo[i], (uint32_t)-1);
+            m_RecompilerOps->LinkJump(*JumpInfo[i]);
             if (JumpInfo[i]->LinkAddress != (uint32_t)-1)
             {
                 JumpInfo[i]->RegSet.UnMap_GPR(31, false);
@@ -357,7 +356,6 @@ bool CCodeSection::ParentContinue()
 
 bool CCodeSection::GenerateNativeCode(uint32_t Test)
 {
-#if defined(__i386__) || defined(_M_IX86)
     if (m_EnterLabel.isValid())
     {
         if (m_Test == Test)
@@ -431,6 +429,7 @@ bool CCodeSection::GenerateNativeCode(uint32_t Test)
             case R4300i_SPECIAL_MFLO: m_RecompilerOps->SPECIAL_MFLO(); break;
             case R4300i_SPECIAL_SYSCALL: m_RecompilerOps->SPECIAL_SYSCALL(); break;
             case R4300i_SPECIAL_BREAK: m_RecompilerOps->SPECIAL_BREAK(); break;
+            case R4300i_SPECIAL_SYNC: m_RecompilerOps->SPECIAL_SYNC(); break;
             case R4300i_SPECIAL_MTLO: m_RecompilerOps->SPECIAL_MTLO(); break;
             case R4300i_SPECIAL_MFHI: m_RecompilerOps->SPECIAL_MFHI(); break;
             case R4300i_SPECIAL_MTHI: m_RecompilerOps->SPECIAL_MTHI(); break;
@@ -483,14 +482,15 @@ bool CCodeSection::GenerateNativeCode(uint32_t Test)
             case R4300i_REGIMM_BGEZ: m_RecompilerOps->Compile_Branch(RecompilerBranchCompare_BGEZ, false); break;
             case R4300i_REGIMM_BLTZL: m_RecompilerOps->Compile_BranchLikely(RecompilerBranchCompare_BLTZ, false); break;
             case R4300i_REGIMM_BGEZL: m_RecompilerOps->Compile_BranchLikely(RecompilerBranchCompare_BGEZ, false); break;
-            case R4300i_REGIMM_BLTZAL: m_RecompilerOps->Compile_Branch(RecompilerBranchCompare_BLTZ, true); break;
-            case R4300i_REGIMM_BGEZAL: m_RecompilerOps->Compile_Branch(RecompilerBranchCompare_BGEZ, true); break;
-            case R4300i_REGIMM_TEQI: m_RecompilerOps->Compile_TrapCompare(RecompilerTrapCompare_TEQI); break;
-            case R4300i_REGIMM_TNEI: m_RecompilerOps->Compile_TrapCompare(RecompilerTrapCompare_TNEI); break;
             case R4300i_REGIMM_TGEI: m_RecompilerOps->Compile_TrapCompare(RecompilerTrapCompare_TGEI); break;
             case R4300i_REGIMM_TGEIU: m_RecompilerOps->Compile_TrapCompare(RecompilerTrapCompare_TGEIU); break;
             case R4300i_REGIMM_TLTI: m_RecompilerOps->Compile_TrapCompare(RecompilerTrapCompare_TLTI); break;
             case R4300i_REGIMM_TLTIU: m_RecompilerOps->Compile_TrapCompare(RecompilerTrapCompare_TLTIU); break;
+            case R4300i_REGIMM_TEQI: m_RecompilerOps->Compile_TrapCompare(RecompilerTrapCompare_TEQI); break;
+            case R4300i_REGIMM_TNEI: m_RecompilerOps->Compile_TrapCompare(RecompilerTrapCompare_TNEI); break;
+            case R4300i_REGIMM_BLTZAL: m_RecompilerOps->Compile_Branch(RecompilerBranchCompare_BLTZ, true); break;
+            case R4300i_REGIMM_BGEZAL: m_RecompilerOps->Compile_Branch(RecompilerBranchCompare_BGEZ, true); break;
+            case R4300i_REGIMM_BGEZALL: m_RecompilerOps->Compile_BranchLikely(RecompilerBranchCompare_BGEZ, true); break;
             default:
                 m_RecompilerOps->UnknownOpcode();
                 break;
@@ -784,9 +784,6 @@ bool CCodeSection::GenerateNativeCode(uint32_t Test)
             m_RecompilerOps->SetNextStepType(PIPELINE_STAGE_END_BLOCK);
         }
     } while (m_RecompilerOps->GetNextStepType() != PIPELINE_STAGE_END_BLOCK);
-#else
-    g_Notify->BreakPoint(__FILE__, __LINE__);
-#endif
     return true;
 }
 

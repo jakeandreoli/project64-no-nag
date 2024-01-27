@@ -276,6 +276,9 @@ void CLanguage::LoadDefaultStrings(void)
     DEF_STR(ROM_DISK_SEEK_TIMING, "Disk seek timing:");
     DEF_STR(ROM_DISK_SEEK_TIMING_TURBO, "Turbo");
     DEF_STR(ROM_DISK_SEEK_TIMING_SLOW, "Slow");
+    DEF_STR(ROM_MEM_SIZE_KNOWN, "Memory size (Known):");
+    DEF_STR(ROM_MEM_SIZE_UNKNOWN, "Memory size (Unknown):");
+    DEF_STR(ROM_FPU_REG_CACHE, "FPU register caching");
 
     // Core styles
     DEF_STR(CORE_INTERPTER, "Interpreter");
@@ -513,6 +516,10 @@ void CLanguage::LoadDefaultStrings(void)
     DEF_STR(MSG_TOOL_IPL_REQUIRED, "Nintendo 64DD development IPL ROM not found.\nIt is required to play development 64DD disk images.\n\nPlease select the required ROM in the settings.");
     DEF_STR(MSG_CHEAT_INVALID_MSG, "Failed to update cheat, it is invalid");
     DEF_STR(MSG_CHEAT_INVALID_TITLE, "Invalid Cheat");
+    DEF_STR(MSG_ROM_FAILED_READ_IDENT, "Failed to read ident bytes");
+    DEF_STR(MSG_ROM_INVALID_IMAGE_FILE, "Invalid image file");
+    DEF_STR(MSG_ROM_FAILED_ROM_ALLOCATE, "Failed to allocate for rom");
+    DEF_STR(MSG_ROM_FAILED_TO_OPEN, "Failed to open rom");
 
     /*** Android ***/
 

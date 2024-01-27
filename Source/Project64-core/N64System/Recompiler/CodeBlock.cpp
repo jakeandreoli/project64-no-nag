@@ -13,8 +13,9 @@
 extern "C" void __clear_cache_android(uint8_t * begin, uint8_t * end);
 #endif
 
-CCodeBlock::CCodeBlock(CMipsMemoryVM & MMU, uint32_t VAddrEnter) :
-    m_MMU(MMU),
+CCodeBlock::CCodeBlock(CN64System & System, uint32_t VAddrEnter) :
+    m_MMU(System.m_MMU_VM),
+    m_Reg(System.m_Reg),
     m_VAddrEnter(VAddrEnter),
     m_VAddrFirst(VAddrEnter),
     m_VAddrLast(VAddrEnter),
@@ -34,9 +35,11 @@ CCodeBlock::CCodeBlock(CMipsMemoryVM & MMU, uint32_t VAddrEnter) :
     }
 #endif
 #if defined(__i386__) || defined(_M_IX86)
-    m_RecompilerOps = new CX86RecompilerOps(MMU, *this);
+    m_RecompilerOps = new CX86RecompilerOps(System, *this);
+#elif defined(__amd64__) || defined(_M_X64)
+    m_RecompilerOps = new CX64RecompilerOps(System, *this);
 #elif defined(__arm__) || defined(_M_ARM)
-    m_RecompilerOps = new CArmRecompilerOps(MMU, *this);
+    m_RecompilerOps = new CArmRecompilerOps(System, *this);
 #else
     g_Notify->BreakPoint(__FILE__, __LINE__);
 #endif
@@ -71,7 +74,7 @@ CCodeBlock::CCodeBlock(CMipsMemoryVM & MMU, uint32_t VAddrEnter) :
     memset(m_MemLocation, 0, sizeof(m_MemLocation));
     memset(m_MemContents, 0, sizeof(m_MemContents));
 
-    m_MemLocation[0] = (uint64_t *)MMU.MemoryPtr(VAddrEnter, 16, true);
+    m_MemLocation[0] = (uint64_t *)m_MMU.MemoryPtr(VAddrEnter, 16, true);
     if (m_MemLocation[0] != 0)
     {
         m_MemLocation[1] = m_MemLocation[0] + 1;
@@ -581,6 +584,7 @@ bool CCodeBlock::AnalyzeInstruction(uint32_t PC, uint32_t & TargetPC, uint32_t &
             break;
         case R4300i_REGIMM_BLTZL:
         case R4300i_REGIMM_BGEZL:
+        case R4300i_REGIMM_BGEZALL:
             TargetPC = PC + ((int16_t)Command.offset << 2) + 4;
             if (TargetPC == PC)
             {
@@ -909,7 +913,7 @@ uint32_t CCodeBlock::Finilize(uint8_t * CompiledLocation)
 #if defined(ANDROID) && (defined(__arm__) || defined(_M_ARM))
     __clear_cache((uint8_t *)((uint32_t)m_CompiledLocation & ~1), m_CompiledLocation + codeSize);
 #endif
-    return codeSize;
+    return (uint32_t)codeSize;
 }
 
 uint32_t CCodeBlock::NextTest()

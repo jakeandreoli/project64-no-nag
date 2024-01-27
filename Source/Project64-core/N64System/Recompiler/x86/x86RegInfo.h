@@ -2,8 +2,8 @@
 
 #if defined(__i386__) || defined(_M_IX86)
 #include <Project64-core/N64System/Mips/Register.h>
-#include <Project64-core/N64System/Recompiler/asmjit.h>
 #include <Project64-core/N64System/Recompiler/RegBase.h>
+#include <Project64-core/N64System/Recompiler/asmjit.h>
 #include <Project64-core/N64System/Recompiler/x86/x86ops.h>
 #include <Project64-core/Settings/DebugSettings.h>
 
@@ -41,8 +41,7 @@ asmjit::x86::St GetX86FpuRegFromIndex(x86RegFpuIndex Index);
 
 class CX86RegInfo :
     public CRegBase,
-    private CDebugSettings,
-    private CSystemRegisters
+    private CDebugSettings
 {
 public:
     // Enums
@@ -52,6 +51,7 @@ public:
         GPR_Mapped = 1,
         Temp_Mapped = 2,
         Stack_Mapped = 3,
+        FPStatusReg_Mapped = 4,
     };
 
     enum FPU_STATE
@@ -61,7 +61,9 @@ public:
         FPU_Dword = 1,
         FPU_Qword = 2,
         FPU_Float = 3,
-        FPU_Double = 4,
+        FPU_FloatLow = 4,
+        FPU_Double = 5,
+        FPU_UnsignedDoubleWord = 6,
     };
 
     CX86RegInfo(CCodeBlock & CodeBlock, CX86Ops & Assembler);
@@ -80,16 +82,21 @@ public:
 
     void FixRoundModel(FPU_ROUND RoundMethod);
     void ChangeFPURegFormat(int32_t Reg, FPU_STATE OldFormat, FPU_STATE NewFormat, FPU_ROUND RoundingModel);
+    asmjit::x86::Gp FPRValuePointer(int32_t Reg, FPU_STATE Format);
     void Load_FPR_ToTop(int32_t Reg, int32_t RegToLoad, FPU_STATE Format);
+    void PrepareFPTopToBe(int32_t Reg, int32_t RegToLoad, FPU_STATE Format);
+    void SetFPTopAs(int32_t Reg);
     bool RegInStack(int32_t Reg, FPU_STATE Format);
     void UnMap_AllFPRs();
     void UnMap_FPR(int32_t Reg, bool WriteBackValue);
     const asmjit::x86::St & StackPosition(int32_t Reg);
 
+    bool IsFPStatusRegMapped();
     asmjit::x86::Gp FreeX86Reg();
     asmjit::x86::Gp Free8BitX86Reg();
     void Map_GPR_32bit(int32_t MipsReg, bool SignValue, int32_t MipsRegToLoad);
     void Map_GPR_64bit(int32_t MipsReg, int32_t MipsRegToLoad);
+    asmjit::x86::Gp Map_FPStatusReg();
     asmjit::x86::Gp Get_MemoryStack() const;
     asmjit::x86::Gp Map_MemoryStack(asmjit::x86::Gp Reg, bool bMapRegister, bool LoadValue = true);
     asmjit::x86::Gp Map_TempReg(asmjit::x86::Gp Reg, int32_t MipsReg, bool LoadHiWord, bool Reg8Bit);
@@ -97,6 +104,7 @@ public:
     void UnProtectGPR(uint32_t MipsReg);
     void ResetX86Protection();
     asmjit::x86::Gp UnMap_TempReg();
+    void UnMap_FPStatusReg();
     void UnMap_GPR(uint32_t Reg, bool WriteBackValue);
     bool UnMap_X86reg(const asmjit::x86::Gp & Reg);
     void WriteBackRegisters();
@@ -157,6 +165,10 @@ public:
     {
         return m_x86fpu_State[Reg];
     }
+    bool & FpuStateChanged(int32_t Reg)
+    {
+        return m_x86fpu_StateChanged[Reg];
+    }
     FPU_ROUND & FpuRoundingModel(int32_t Reg)
     {
         return m_x86fpu_RoundingModel[Reg];
@@ -165,6 +177,7 @@ public:
 private:
     CX86RegInfo();
 
+    CRegisters & m_Reg;
     CCodeBlock & m_CodeBlock;
     CX86Ops & m_Assembler;
     asmjit::x86::Gp UnMap_8BitTempReg();

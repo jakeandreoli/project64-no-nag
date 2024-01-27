@@ -10,21 +10,28 @@ CDefaultsOptionsPage::CDefaultsOptionsPage(HWND hParent, const RECT & rcDispay)
     }
     UpdatePageSettings();
 
-    SetDlgItemText(IDC_MEMORY_SIZE_TEXT, wGS(ROM_MEM_SIZE).c_str());
+    SetDlgItemText(IDC_MEMORY_SIZE_KNOWN_TEXT, wGS(ROM_MEM_SIZE_KNOWN).c_str());
+    SetDlgItemText(IDC_MEMORY_SIZE_UNKOWN_TEXT, wGS(ROM_MEM_SIZE_UNKNOWN).c_str());
     SetDlgItemText(IDC_HLE_GFX, wGS(PLUG_HLE_GFX).c_str());
     SetDlgItemText(IDC_VIREFESH_TEXT, wGS(ROM_VIREFRESH).c_str());
     SetDlgItemText(IDC_COUNTPERBYTE_TEXT, wGS(ROM_COUNTPERBYTE).c_str());
     SetDlgItemText(IDC_COUNTFACT_TEXT, wGS(ROM_COUNTER_FACTOR).c_str());
-    SetDlgItemText(IDC_ROM_32BIT, wGS(ROM_32BIT).c_str());
     SetDlgItemText(IDC_ROM_FIXEDAUDIO, wGS(ROM_FIXED_AUDIO).c_str());
     SetDlgItemText(IDC_SYNC_AUDIO, wGS(ROM_SYNC_AUDIO).c_str());
-    SetDlgItemText(IDC_UNALIGNED_DMA, wGS(ROM_UNALIGNED_DMA).c_str());
     SetDlgItemText(IDC_RANDOMIZE_SIPI_INTERRUPTS, wGS(ROM_RANDOMIZE_SIPI_INTERRUPTS).c_str());
     SetDlgItemText(IDC_PROTECT_MEMORY, wGS(ADVANCE_SMM_PROTECT).c_str());
     SetDlgItemText(IDC_DISKSEEKTIMING_TEXT1, wGS(ROM_DISK_SEEK_TIMING).c_str());
 
     CModifiedComboBox * ComboBox;
-    ComboBox = AddModComboBox(GetDlgItem(IDC_RDRAM_SIZE), Default_RDRamSize);
+    ComboBox = AddModComboBox(GetDlgItem(IDC_RDRAM_SIZE_KNOWN), Default_RDRamSizeUnknown);
+    if (ComboBox)
+    {
+        ComboBox->SetTextField(GetDlgItem(IDC_MEMORY_SIZE_TEXT));
+        ComboBox->AddItem(wGS(RDRAM_4MB).c_str(), 0x400000);
+        ComboBox->AddItem(wGS(RDRAM_8MB).c_str(), 0x800000);
+    }
+
+    ComboBox = AddModComboBox(GetDlgItem(IDC_RDRAM_SIZE_UNKNOWN), Default_RDRamSizeKnown);
     if (ComboBox)
     {
         ComboBox->SetTextField(GetDlgItem(IDC_MEMORY_SIZE_TEXT));
@@ -50,10 +57,8 @@ CDefaultsOptionsPage::CDefaultsOptionsPage(HWND hParent, const RECT & rcDispay)
     TxtBox->SetTextField(GetDlgItem(IDC_COUNTPERBYTE_TEXT));
 
     AddModCheckBox(GetDlgItem(IDC_HLE_GFX), Default_UseHleGfx);
-    AddModCheckBox(GetDlgItem(IDC_ROM_32BIT), Default_32Bit);
     AddModCheckBox(GetDlgItem(IDC_SYNC_AUDIO), Default_SyncViaAudio);
     AddModCheckBox(GetDlgItem(IDC_ROM_FIXEDAUDIO), Default_FixedAudio);
-    AddModCheckBox(GetDlgItem(IDC_UNALIGNED_DMA), Default_UnalignedDMA);
     AddModCheckBox(GetDlgItem(IDC_RANDOMIZE_SIPI_INTERRUPTS), Default_RandomizeSIPIInterrupts);
     AddModCheckBox(GetDlgItem(IDC_PROTECT_MEMORY), Default_SMM_Protect_Memory);
     AddModCheckBox(GetDlgItem(IDC_DISKSEEKTIMING), Default_DiskSeekTiming);

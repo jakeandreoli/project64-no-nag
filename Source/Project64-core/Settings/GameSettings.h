@@ -11,9 +11,21 @@ public:
 
     void RefreshGameSettings(void);
 
+    inline static bool RspMultiThreaded(void)
+    {
+        return m_RspMultiThreaded;
+    }
     inline static bool UseHleGfx(void)
     {
         return m_UseHleGfx;
+    }
+    inline static bool UseHleAudio(void)
+    {
+        return m_UseHleAudio;
+    }
+    inline static bool bFPURegCaching(void)
+    {
+        return m_FPURegCaching;
     }
     inline static bool bRegCaching(void)
     {
@@ -119,6 +131,10 @@ public:
     {
         return m_EnableDisk;
     }
+    inline static bool UnalignedDMA(void)
+    {
+        return m_UnalignedDMA;
+    }
 
     void RefreshSyncToAudio(void);
     static void SetOverClockModifier(bool EnhancmentOverClock, uint32_t EnhancmentOverClockModifier);
@@ -133,9 +149,11 @@ private:
 
     static void EnableDiskChanged(void *);
 
-    // Settings that can be changed on the fly
+    static bool m_RspMultiThreaded;
     static bool m_UseHleGfx;
+    static bool m_UseHleAudio;
     static bool m_RegCaching;
+    static bool m_FPURegCaching;
     static bool m_bLinkBlocks;
     static uint32_t m_LookUpMode; //FUNC_LOOKUP_METHOD
     static uint32_t m_CountPerOp;
@@ -163,5 +181,6 @@ private:
     static bool m_EnhancmentOverClock;
     static uint32_t m_EnhancmentOverClockModifier;
     static bool m_EnableDisk;
+    static bool m_UnalignedDMA;
     static int32_t m_RefCount;
 };

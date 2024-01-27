@@ -16,6 +16,7 @@ import android.graphics.Point;
 import android.os.Build;
 import android.os.Environment;
 import android.util.DisplayMetrics;
+import android.view.KeyEvent;
 import android.view.WindowManager;
 
 @SuppressLint("NewApi")
@@ -43,10 +44,12 @@ public class AndroidDevice
     public static final boolean IS_LOLLIPOP = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP;
 
     public final static String EXTERNAL_PUBLIC_DIRECTORY = Environment.getExternalStorageDirectory().getPath();
-    public final static String PACKAGE_DIRECTORY = EXTERNAL_PUBLIC_DIRECTORY + "/Android/data/" + AndroidDevice.class.getPackage().getName();
+    public final static String PACKAGE_DIRECTORY = Project64Application.getAppContext().getExternalFilesDir(null).getAbsolutePath();
 
     public static final boolean IS_ACTION_BAR_AVAILABLE = AndroidDevice.IS_HONEYCOMB;
 
+    public static boolean MapVolumeKeys = false;
+    
     public final static int nativeWidth;
     public final static int nativeHeight;
     static
@@ -72,6 +75,24 @@ public class AndroidDevice
         nativeHeight = _nativeHeight;
     }
 
+    public static List<Integer> getUnmappableKeyCodes ()
+    {
+        List<Integer> unmappables = new ArrayList<Integer>();
+        unmappables.add( KeyEvent.KEYCODE_MENU );
+        if( IS_HONEYCOMB )
+        {
+            // Back key is needed to show/hide the action bar in HC+
+            unmappables.add( KeyEvent.KEYCODE_BACK );
+        }
+        if( !MapVolumeKeys )
+        {
+            unmappables.add( KeyEvent.KEYCODE_VOLUME_UP );
+            unmappables.add( KeyEvent.KEYCODE_VOLUME_DOWN );
+            unmappables.add( KeyEvent.KEYCODE_VOLUME_MUTE );
+        }
+        return unmappables;
+    }
+    
     public static ArrayList<String> getStorageDirectories()
     {
         BufferedReader bufReader = null;

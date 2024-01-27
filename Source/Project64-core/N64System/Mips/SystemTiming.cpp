@@ -193,7 +193,7 @@ void CSystemTimer::TimerDone()
     switch (m_Current)
     {
     case CSystemTimer::CompareTimer:
-        m_Reg.FAKE_CAUSE_REGISTER |= CAUSE_IP7;
+        m_Reg.CAUSE_REGISTER.PendingInterrupts |= CAUSE_IP7;
         m_Reg.CheckInterrupts();
         UpdateCompareTimer();
         break;
@@ -225,7 +225,7 @@ void CSystemTimer::TimerDone()
     case CSystemTimer::DDSeekTimer:
         StopTimer(CSystemTimer::DDSeekTimer);
         m_Reg.ASIC_STATUS |= DD_STATUS_MECHA_INT;
-        m_Reg.FAKE_CAUSE_REGISTER |= CAUSE_IP3;
+        m_Reg.CAUSE_REGISTER.PendingInterrupts |= CAUSE_IP3;
         m_Reg.CheckInterrupts();
         break;
     case CSystemTimer::DDMotorTimer:
@@ -246,14 +246,7 @@ void CSystemTimer::TimerDone()
         break;
     case CSystemTimer::RspTimer:
         StopTimer(CSystemTimer::RspTimer);
-        try
-        {
-            m_System.RunRSP();
-        }
-        catch (...)
-        {
-            g_Notify->BreakPoint(__FILE__, __LINE__);
-        }
+        m_System.GetPlugins()->RSP()->RunRSP();
         break;
     case CSystemTimer::RSPTimerDlist:
         StopTimer(CSystemTimer::RSPTimerDlist);
@@ -274,11 +267,6 @@ void CSystemTimer::TimerDone()
     default:
         g_Notify->BreakPoint(__FILE__, __LINE__);
     }
-    //CheckTimer();
-    /*if (Profiling)
-    {
-    StartTimer(LastTimer);
-    }*/
 }
 
 void CSystemTimer::SetCompareTimer()

@@ -26,6 +26,7 @@ CMainMenu::CMainMenu(CMainGui * hMainWindow) :
     m_ChangeSettingList.push_back(Logging_GenerateLog);
     m_ChangeSettingList.push_back(Debugger_RecordExecutionTimes);
     m_ChangeSettingList.push_back(Debugger_EndOnPermLoop);
+    m_ChangeSettingList.push_back(Debugger_FpuExceptionInRecompiler);
     m_ChangeSettingList.push_back(Debugger_BreakOnUnhandledMemory);
     m_ChangeSettingList.push_back(Debugger_BreakOnAddressError);
     m_ChangeSettingList.push_back(Debugger_StepOnBreakOpCode);
@@ -501,6 +502,9 @@ bool CMainMenu::ProcessMessage(HWND hWnd, DWORD /*FromAccelerator*/, DWORD MenuI
     case ID_PROFILE_GENERATELOG: g_BaseSystem->ExternalEvent(SysEvent_DumpFunctionTimes); break;
     case ID_DEBUG_END_ON_PERM_LOOP:
         g_Settings->SaveBool(Debugger_EndOnPermLoop, !g_Settings->LoadBool(Debugger_EndOnPermLoop));
+        break;
+    case ID_DEBUG_FPU_EXCEPTION_IN_RECOMPILER:
+        g_Settings->SaveBool(Debugger_FpuExceptionInRecompiler, !g_Settings->LoadBool(Debugger_FpuExceptionInRecompiler));
         break;
     case ID_DEBUG_BREAK_ON_UNHANDLED_MEM:
         g_Settings->SaveBool(Debugger_BreakOnUnhandledMemory, !g_Settings->LoadBool(Debugger_BreakOnUnhandledMemory));
@@ -1151,6 +1155,12 @@ void CMainMenu::FillOutMenu(HMENU hMenu)
             Item.SetItemTicked(true);
         }
         DebugR4300Menu.push_back(Item);
+        Item.Reset(ID_DEBUG_FPU_EXCEPTION_IN_RECOMPILER, EMPTY_STRING, EMPTY_STDSTR, nullptr, L"Fpu Exception In Recompiler");
+        if (g_Settings->LoadBool(Debugger_FpuExceptionInRecompiler))
+        {
+            Item.SetItemTicked(true);
+        }
+        DebugR4300Menu.push_back(Item);
         Item.Reset(ID_DEBUG_BREAK_ON_UNHANDLED_MEM, EMPTY_STRING, EMPTY_STDSTR, nullptr, L"Break on unhandled memory actions");
         if (g_Settings->LoadBool(Debugger_BreakOnUnhandledMemory))
         {
@@ -1455,11 +1465,11 @@ void CMainMenu::ResetMenu(void)
         WriteTrace(TraceUserInterface, TraceDebug, "Remove plugin menu");
         if (g_Plugins->Gfx() != nullptr && IsMenu((HMENU)g_Plugins->Gfx()->GetDebugMenu()))
         {
-            RemoveMenu((HMENU)OldMenuHandle, (DWORD)g_Plugins->Gfx()->GetDebugMenu(), MF_BYCOMMAND);
+            RemoveMenu((HMENU)OldMenuHandle, (UINT)((UINT_PTR)g_Plugins->Gfx()->GetDebugMenu()), MF_BYCOMMAND);
         }
         if (g_Plugins->RSP() != nullptr && IsMenu((HMENU)g_Plugins->RSP()->GetDebugMenu()))
         {
-            RemoveMenu((HMENU)OldMenuHandle, (DWORD)g_Plugins->RSP()->GetDebugMenu(), MF_BYCOMMAND);
+            RemoveMenu((HMENU)OldMenuHandle, (UINT)((UINT_PTR)g_Plugins->RSP()->GetDebugMenu()), MF_BYCOMMAND);
         }
         WriteTrace(TraceUserInterface, TraceDebug, "Destroy old menu");
 

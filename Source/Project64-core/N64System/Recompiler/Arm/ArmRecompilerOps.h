@@ -15,7 +15,7 @@ struct CJumpInfo;
 class CArmRecompilerOps
 {
 public:
-    CArmRecompilerOps(CMipsMemoryVM & MMU, CCodeBlock & CodeBlock);
+    CArmRecompilerOps(CN64System & System, CCodeBlock & CodeBlock);
     ~CArmRecompilerOps();
 
     // Trap functions
@@ -86,6 +86,7 @@ public:
     void SPECIAL_JALR();
     void SPECIAL_SYSCALL();
     void SPECIAL_BREAK();
+    void SPECIAL_SYNC();
     void SPECIAL_MFLO();
     void SPECIAL_MTLO();
     void SPECIAL_MFHI();

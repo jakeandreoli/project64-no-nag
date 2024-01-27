@@ -2,6 +2,7 @@
 
 #include "SettingsType-Application.h"
 #include <Common/path.h>
+#include <algorithm>
 
 CIniFile * CSettingTypeApplication::m_SettingsIniFile = nullptr;
 
@@ -88,8 +89,11 @@ void CSettingTypeApplication::Initialize(void)
         {
             SettingPath.DirectoryCreate();
         }
-
+        CPath SettingDir(SettingPath);
+        SettingDir.SetNameExtension("");
+        g_Settings->SaveString(SupportFile_SettingsDirectory, (const char *)SettingDir);
         m_SettingsIniFile = new CIniFile(SettingPath);
+        m_SettingsIniFile->SetCustomSort(CustomSortData);
     }
 
     m_SettingsIniFile->SetAutoFlush(false);
@@ -281,6 +285,29 @@ std::string CSettingTypeApplication::FixSectionName(const char * Section)
     }
     SectionName.Replace("\\", "-");
     return SectionName;
+}
+
+struct compareKeyValueItem
+{
+    inline bool operator()(CIniFileBase::KeyValueItem & struct1, const CIniFileBase::KeyValueItem & struct2)
+    {
+        std::string a = *struct1.first;
+        std::string b = *struct2.first;
+        if (_stricmp(a.c_str(), "Good Name") == 0)
+        {
+            return true;
+        }
+        if (_stricmp(b.c_str(), "Good Name") == 0)
+        {
+            return false;
+        }
+        return _stricmp(a.c_str(), b.c_str()) <= 0;
+    }
+};
+
+void CSettingTypeApplication::CustomSortData(CIniFileBase::KeyValueVector & data)
+{
+    std::sort(data.begin(), data.end(), compareKeyValueItem());
 }
 
 void CSettingTypeApplication::Delete(uint32_t /*Index*/)

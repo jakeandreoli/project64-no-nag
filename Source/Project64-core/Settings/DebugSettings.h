@@ -32,10 +32,6 @@ public:
     {
         return m_bRecordRecompilerAsm;
     }
-    static inline bool bShowTLBMisses(void)
-    {
-        return m_bShowTLBMisses;
-    }
     static inline bool bRecordExecutionTimes(void)
     {
         return m_RecordExecutionTimes;
@@ -80,6 +76,10 @@ public:
     {
         return m_EndOnPermLoop;
     }
+    static inline bool FpuExceptionInRecompiler(void)
+    {
+        return m_FpuExceptionInRecompiler;
+    }
     static inline bool BreakOnUnhandledMemory(void)
     {
         return m_BreakOnUnhandledMemory;
@@ -107,7 +107,6 @@ private:
     static bool m_SkipOp;
     static bool m_WaitingForStep;
     static bool m_bRecordRecompilerAsm;
-    static bool m_bShowTLBMisses;
     static bool m_RecordExecutionTimes;
     static bool m_HaveExecutionBP;
     static bool m_HaveWriteBP;
@@ -119,6 +118,7 @@ private:
     static uint32_t m_IntrBreakpoints;
     static uint32_t m_RcpIntrBreakpoints;
     static bool m_EndOnPermLoop;
+    static bool m_FpuExceptionInRecompiler;
     static bool m_BreakOnUnhandledMemory;
     static bool m_BreakOnAddressError;
     static bool m_StepOnBreakOpCode;

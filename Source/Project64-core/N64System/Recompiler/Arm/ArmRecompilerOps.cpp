@@ -5,7 +5,7 @@
 #include <Project64-core/N64System/Recompiler/Arm/ArmRecompilerOps.h>
 #include <Project64-core/Notification.h>
 
-CArmRecompilerOps::CArmRecompilerOps(CMipsMemoryVM & /*MMU*/, CCodeBlock & CodeBlock) :
+CArmRecompilerOps::CArmRecompilerOps(CN64System & System, CCodeBlock & CodeBlock) :
     m_Assembler(CodeBlock),
     m_RegWorkingSet(CodeBlock, m_Assembler)
 {
@@ -316,6 +316,11 @@ void CArmRecompilerOps::SPECIAL_SYSCALL()
 }
 
 void CArmRecompilerOps::SPECIAL_BREAK()
+{
+    g_Notify->BreakPoint(__FILE__, __LINE__);
+}
+
+void CArmRecompilerOps::SPECIAL_SYNC()
 {
     g_Notify->BreakPoint(__FILE__, __LINE__);
 }

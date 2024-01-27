@@ -1,8 +1,8 @@
 #pragma once
 
 #include <Project64-core/N64System/N64Types.h>
-#include <Project64-core/N64System/Recompiler/asmjit.h>
 #include <Project64-core/N64System/Recompiler/RegInfo.h>
+#include <Project64-core/N64System/Recompiler/asmjit.h>
 
 class CCodeBlock;
 
@@ -18,9 +18,12 @@ enum ExitReason
     ExitReason_TLBWriteMiss,
     ExitReason_ResetRecompCode,
     ExitReason_ExceptionOverflow,
+    ExitReason_ExceptionFloatingPoint,
     ExitReason_AddressErrorExceptionRead32,
     ExitReason_AddressErrorExceptionRead64,
+    ExitReason_AddressErrorExceptionWrite32,
     ExitReason_IllegalInstruction,
+    ExitReason_Exception,
 };
 
 struct CExitInfo

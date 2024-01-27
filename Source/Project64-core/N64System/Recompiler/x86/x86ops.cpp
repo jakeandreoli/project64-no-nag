@@ -162,19 +162,34 @@ void CX86Ops::CallFunc(uint32_t FunctPtr, const char * FunctName)
 }
 
 #ifdef _MSC_VER
-void CX86Ops::CallThis(uint32_t ThisPtr, uint32_t FunctPtr, char * FunctName, uint32_t /*StackSize*/)
+void CX86Ops::CallThis(uint32_t ThisPtr, uint32_t FunctPtr, const char * FunctName, uint32_t /*StackSize*/)
 {
     mov(asmjit::x86::ecx, ThisPtr);
     CallFunc(FunctPtr, FunctName);
 }
 #else
-void CX86Ops::CallThis(uint32_t ThisPtr, uint32_t FunctPtr, char * FunctName, uint32_t StackSize)
+void CX86Ops::CallThis(uint32_t ThisPtr, uint32_t FunctPtr, const char * FunctName, uint32_t StackSize)
 {
     push(ThisPtr);
     CallFunc(FunctPtr, FunctName);
     AddConstToX86Reg(asmjit::x86::esp, StackSize);
 }
 #endif
+
+void CX86Ops::CompConstByteToVariable(void * Variable, const char * VariableName, uint8_t Const)
+{
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        std::string SymbolKey = VariableSymbol(Variable);
+        AddSymbol(SymbolKey.c_str(), VariableName);
+        cmp(asmjit::x86::byte_ptr((uint64_t)Variable), Const);
+        RemoveSymbol(SymbolKey.c_str());
+    }
+    else
+    {
+        cmp(asmjit::x86::byte_ptr((uint64_t)Variable), Const);
+    }
+}
 
 void CX86Ops::CompConstToVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
@@ -282,6 +297,12 @@ void CX86Ops::JneLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
     AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
     jne(JumpLabel);
+}
+
+void CX86Ops::JnpLabel(const char * LabelName, asmjit::Label & JumpLabel)
+{
+    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    jnp(JumpLabel);
 }
 
 void CX86Ops::JnsLabel(const char * LabelName, asmjit::Label & JumpLabel)
@@ -452,7 +473,7 @@ void CX86Ops::MoveX86regHalfToVariable(void * Variable, const char * VariableNam
     if (CDebugSettings::bRecordRecompilerAsm())
     {
         std::string SymbolKey = VariableSymbol(Variable);
-        
+
         AddSymbol(SymbolKey.c_str(), VariableName);
         mov(asmjit::x86::word_ptr((uint64_t)(Variable)), Reg.r16());
         RemoveSymbol(SymbolKey.c_str());
@@ -514,12 +535,12 @@ void CX86Ops::OrConstToVariable(void * Variable, const char * VariableName, uint
     {
         stdstr_f SymbolKey("0x%X", Variable);
         AddSymbol(SymbolKey.c_str(), VariableName);
-        or_(asmjit::x86::word_ptr((uint64_t)Variable), Const);
+        or_(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
         RemoveSymbol(SymbolKey.c_str());
     }
     else
     {
-        or_(asmjit::x86::word_ptr((uint64_t)Variable), Const);
+        or_(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
     }
 }
 
@@ -944,12 +965,12 @@ CX86Ops::x86Reg CX86Ops::RegValue(const asmjit::x86::Gp & Reg)
     else if (Reg == asmjit::x86::dh)
     {
         return x86_DH;
-    } 
+    }
     g_Notify->BreakPoint(__FILE__, __LINE__);
     return x86_EAX;
 }
 
-asmjit::Error CX86Ops::_log(const char* data, size_t size) noexcept
+asmjit::Error CX86Ops::_log(const char * data, size_t size) noexcept
 {
     stdstr AsmjitLog(std::string(data, size));
     AsmjitLog.Trim("\n");

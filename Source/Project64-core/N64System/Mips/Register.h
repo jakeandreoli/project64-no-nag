@@ -19,16 +19,122 @@
 #pragma warning(push)
 #pragma warning(disable : 4201) // Non-standard extension used: nameless struct/union
 
+union COP0EntryLo
+{
+    uint64_t Value;
+
+    struct
+    {
+        uint64_t GLOBAL : 1;
+        uint64_t V : 1;
+        uint64_t D : 1;
+        uint64_t C : 3;
+        uint64_t PFN : 28;
+        uint64_t : 28;
+        uint64_t UC : 2;
+    };
+};
+
+union COP0PageMask
+{
+    uint64_t Value;
+
+    struct
+    {
+        uint64_t : 13;
+        uint64_t Mask : 12;
+        uint64_t : 39;
+    };
+};
+
+union COP0EntryHi
+{
+    uint64_t Value;
+
+    uint32_t ASID() const;
+    uint32_t VPN2() const;
+    uint32_t FILL() const;
+    uint32_t R() const;
+
+    void SetFromAddress(const uint64_t & Address);
+
+    struct
+    {
+        uint64_t ASID : 8;
+        uint64_t : 5;
+        uint64_t VPN2 : 31;
+        uint64_t FILL : 18;
+        uint64_t R : 2;
+    } Raw;
+};
+
+enum PRIVILEGE_MODE : unsigned
+{
+    PrivilegeMode_Kernel,
+    PrivilegeMode_Supervisor,
+    PrivilegeMode_User
+};
+
+union COP0Status
+{
+    uint64_t Value;
+
+    struct
+    {
+        unsigned InterruptEnable : 1;
+        unsigned ExceptionLevel : 1;
+        unsigned ErrorLevel : 1;
+        PRIVILEGE_MODE PrivilegeMode : 2;
+        unsigned UserExtendedAddressing : 1;
+        unsigned SupervisorExtendedAddressing : 1;
+        unsigned KernelExtendedAddressing : 1;
+        unsigned InterruptMask : 8;
+        unsigned DE : 1;
+        unsigned CE : 1;
+        unsigned CH : 1;
+        unsigned NMI : 1;
+        unsigned SR : 1;
+        unsigned TS : 1;
+        unsigned BEV : 1;
+        unsigned : 1;
+        unsigned : 1;
+        unsigned RE : 1;
+        unsigned FR : 1;
+        unsigned RP : 1;
+        unsigned CU0 : 1;
+        unsigned CU1 : 1;
+        unsigned CU2 : 1;
+        unsigned CU3 : 1;
+    };
+};
+
+union COP0Cause
+{
+    uint64_t Value;
+
+    struct
+    {
+        unsigned : 2;
+        unsigned ExceptionCode : 5;
+        unsigned : 1;
+        unsigned PendingInterrupts : 8;
+        unsigned : 12;
+        unsigned CoprocessorUnitNumber : 2;
+        unsigned : 1;
+        unsigned BranchDelay : 1;
+    };
+};
+
 union COP0Context
 {
     uint64_t Value;
 
     struct
     {
-        unsigned : 4;
-        unsigned BadVPN2 : 19;
-        unsigned PTEBaseHi : 9;
-        unsigned PTEBaseLo : 32;
+        uint64_t : 4;
+        uint64_t BadVPN2 : 19;
+        uint64_t PTEBaseHi : 9;
+        uint64_t PTEBaseLo : 32;
     };
 };
 
@@ -45,6 +151,61 @@ union COP0XContext
     };
 };
 
+enum FPRoundingMode : unsigned
+{
+    FPRoundingMode_RoundToNearest = 0,
+    FPRoundingMode_RoundTowardZero = 1,
+    FPRoundingMode_RoundTowardPlusInfinity = 2,
+    FPRoundingMode_RoundTowardMinusInfinity = 3,
+};
+
+union FPStatusReg
+{
+    uint32_t Value;
+
+    struct
+    {
+        FPRoundingMode RoundingMode : 2;
+        unsigned : 22;
+        unsigned FlushSubnormals : 1;
+        unsigned : 7;
+    };
+
+    struct
+    {
+        unsigned : 2;
+        unsigned Inexact : 1;
+        unsigned Underflow : 1;
+        unsigned Overflow : 1;
+        unsigned DivisionByZero : 1;
+        unsigned InvalidOperation : 1;
+        unsigned : 25;
+    } Flags;
+
+    struct
+    {
+        unsigned : 7;
+        unsigned Inexact : 1;
+        unsigned Underflow : 1;
+        unsigned Overflow : 1;
+        unsigned DivisionByZero : 1;
+        unsigned InvalidOperation : 1;
+        unsigned : 20;
+    } Enable;
+
+    struct
+    {
+        unsigned : 12;
+        unsigned Inexact : 1;
+        unsigned Underflow : 1;
+        unsigned Overflow : 1;
+        unsigned DivisionByZero : 1;
+        unsigned InvalidOperation : 1;
+        unsigned UnimplementedOperation : 1;
+        unsigned : 14;
+    } Cause;
+};
+
 #pragma warning(pop)
 
 // CPO registers by name
@@ -56,17 +217,17 @@ protected:
 public:
     uint64_t & INDEX_REGISTER;
     uint64_t & RANDOM_REGISTER;
-    uint64_t & ENTRYLO0_REGISTER;
-    uint64_t & ENTRYLO1_REGISTER;
+    COP0EntryLo & ENTRYLO0_REGISTER;
+    COP0EntryLo & ENTRYLO1_REGISTER;
     COP0Context & CONTEXT_REGISTER;
-    uint64_t & PAGE_MASK_REGISTER;
+    COP0PageMask & PAGE_MASK_REGISTER;
     uint64_t & WIRED_REGISTER;
     uint64_t & BAD_VADDR_REGISTER;
     uint64_t & COUNT_REGISTER;
-    uint64_t & ENTRYHI_REGISTER;
+    COP0EntryHi & ENTRYHI_REGISTER;
     uint64_t & COMPARE_REGISTER;
-    uint64_t & STATUS_REGISTER;
-    uint64_t & CAUSE_REGISTER;
+    COP0Status & STATUS_REGISTER;
+    COP0Cause & CAUSE_REGISTER;
     uint64_t & EPC_REGISTER;
     uint64_t & PREVID_REGISTER;
     uint64_t & CONFIG_REGISTER;
@@ -74,7 +235,6 @@ public:
     uint64_t & TAGLO_REGISTER;
     uint64_t & TAGHI_REGISTER;
     uint64_t & ERROREPC_REGISTER;
-    uint64_t & FAKE_CAUSE_REGISTER;
 
 private:
     CP0registers();
@@ -101,38 +261,38 @@ enum
     STATUS_FR = 0x04000000,
     STATUS_CU0 = 0x10000000,
     STATUS_CU1 = 0x20000000,
+    STATUS_CU2 = 0x40000000,
+    STATUS_CU3 = 0x80000000,
 
     // Cause flags
-    CAUSE_EXC_CODE = 0xFF,
-    CAUSE_IP0 = 0x100,
-    CAUSE_IP1 = 0x200,
-    CAUSE_IP2 = 0x400,
-    CAUSE_IP3 = 0x800,
-    CAUSE_IP4 = 0x1000,
-    CAUSE_IP5 = 0x2000,
-    CAUSE_IP6 = 0x4000,
-    CAUSE_IP7 = 0x8000,
-    CAUSE_BD = 0x80000000,
+    CAUSE_IP0 = 0x1,
+    CAUSE_IP1 = 0x2,
+    CAUSE_IP2 = 0x4,
+    CAUSE_IP3 = 0x8,
+    CAUSE_IP4 = 0x10,
+    CAUSE_IP5 = 0x20,
+    CAUSE_IP6 = 0x40,
+    CAUSE_IP7 = 0x80,
 
     // Cause exception ID's
-    EXC_INT = 0,      // Interrupt
-    EXC_MOD = 4,      // TLB mod
-    EXC_RMISS = 8,    // Read TLB miss
-    EXC_WMISS = 12,   // Write TLB miss
-    EXC_RADE = 16,    // Read address error
-    EXC_WADE = 20,    // Write address error
-    EXC_IBE = 24,     // Instruction bus error
-    EXC_DBE = 28,     // Data bus error
-    EXC_SYSCALL = 32, // Syscall
-    EXC_BREAK = 36,   // Breakpoint
-    EXC_II = 40,      // Illegal instruction
-    EXC_CPU = 44,     // Co-processor unusable
-    EXC_OV = 48,      // Overflow
-    EXC_TRAP = 52,    // Trap exception
-    EXC_VCEI = 56,    // Virtual coherency on instruction fetch
-    EXC_FPE = 60,     // Floating point exception
-    EXC_WATCH = 92,   // Watchpoint reference
-    EXC_VCED = 124,   // Virtual coherency on data read
+    EXC_INT = 0,     // Interrupt
+    EXC_MOD = 1,     // TLB mod
+    EXC_RMISS = 2,   // Read TLB miss
+    EXC_WMISS = 3,   // Write TLB miss
+    EXC_RADE = 4,    // Read address error
+    EXC_WADE = 5,    // Write address error
+    EXC_IBE = 6,     // Instruction bus error
+    EXC_DBE = 7,     // Data bus error
+    EXC_SYSCALL = 8, // Syscall
+    EXC_BREAK = 9,   // Breakpoint
+    EXC_II = 10,     // Illegal instruction
+    EXC_CPU = 11,    // Co-processor unusable
+    EXC_OV = 12,     // Overflow
+    EXC_TRAP = 13,   // Trap exception
+    EXC_VCEI = 14,   // Virtual coherency on instruction fetch
+    EXC_FPE = 15,    // Floating point exception
+    EXC_WATCH = 23,  // Watchpoint reference
+    EXC_VCED = 31,   // Virtual coherency on data read
 };
 
 // Float point control status register flags
@@ -265,30 +425,14 @@ public:
     static const char * FPR_Ctrl[32];
 };
 
-class CSystemRegisters
-{
-protected:
-    static uint32_t * _PROGRAM_COUNTER;
-    static MIPS_DWORD * _GPR;
-    static MIPS_DWORD * _FPR;
-    static uint64_t * _CP0;
-    static MIPS_DWORD * _RegHI;
-    static MIPS_DWORD * _RegLO;
-    static float ** _FPR_S;
-    static double ** _FPR_D;
-    static uint32_t * _FPCR;
-    static uint32_t * _LLBit;
-    static int32_t * _RoundingModel;
-};
-
 class CN64System;
 class CSystemEvents;
+class CTLB;
 
 class CRegisters :
     public CLogging,
     private CDebugSettings,
     private CGameSettings,
-    protected CSystemRegisters,
     public CP0registers,
     public RDRAMRegistersReg,
     public MIPSInterfaceReg,
@@ -337,40 +481,40 @@ public:
         COP0Reg_ErrEPC = 30,
         COP0Reg_31 = 31,
     };
-    CRegisters(CN64System * System, CSystemEvents * SystemEvents);
+    CRegisters(CN64System & System, CSystemEvents & SystemEvents);
 
+    void Init(void);
     void CheckInterrupts();
-    void DoAddressError(bool DelaySlot, uint64_t BadVaddr, bool FromRead);
-    void DoBreakException(bool DelaySlot);
-    void DoTrapException(bool DelaySlot);
-    void DoCopUnusableException(bool DelaySlot, int32_t Coprocessor);
-    bool DoIntrException(bool DelaySlot);
-    void DoIllegalInstructionException(bool DelaySlot);
-    void DoOverflowException(bool DelaySlot);
-    void DoTLBReadMiss(bool DelaySlot, uint64_t BadVaddr);
-    void DoTLBWriteMiss(bool DelaySlot, uint64_t BadVaddr);
-    void DoSysCallException(bool DelaySlot);
+    void DoAddressError(uint64_t BadVaddr, bool FromRead);
+    bool DoIntrException();
     void FixFpuLocations();
-    void Reset();
-    void SetAsCurrentSystem();
+    void Reset(bool bPostPif, CMipsMemoryVM & MMU);
+    void TriggerAddressException(uint64_t Address, uint32_t ExceptionCode);
+    void TriggerException(uint32_t ExceptionCode, uint32_t Coprocessor = 0);
 
     uint64_t Cop0_MF(COP0Reg Reg);
     void Cop0_MT(COP0Reg Reg, uint64_t Value);
+    void Cop1_CT(uint32_t Reg, uint32_t Value);
+    uint64_t Cop2_MF(uint32_t Reg);
+    void Cop2_MT(uint32_t Reg, uint64_t Value);
 
     // General registers
     uint32_t m_PROGRAM_COUNTER;
     MIPS_DWORD m_GPR[32];
-    uint64_t m_CP0[33];
+    uint64_t m_CP0[32];
     uint64_t m_CP0Latch;
+    uint64_t m_CP2Latch;
     MIPS_DWORD m_HI;
     MIPS_DWORD m_LO;
     uint32_t m_LLBit;
 
     // Floating point registers/information
     uint32_t m_FPCR[32];
-    int32_t m_RoundingModel;
     MIPS_DWORD m_FPR[32];
+    uint32_t * m_FPR_UW[32];
+    uint64_t * m_FPR_UDW[32];
     float * m_FPR_S[32];
+    float * m_FPR_S_L[32];
     double * m_FPR_D[32];
 
     // Memory-mapped N64 registers
@@ -394,6 +538,8 @@ private:
     CRegisters & operator=(const CRegisters &);
 
     bool m_FirstInterupt;
-    CN64System * m_System;
-    CSystemEvents * m_SystemEvents;
+    CN64System & m_System;
+    CSystemEvents & m_SystemEvents;
+    CSystemTimer & m_SystemTimer;
+    CTLB & m_TLB;
 };

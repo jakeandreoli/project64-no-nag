@@ -5,11 +5,11 @@
 #include "Settings/SettingType/SettingsType-ApplicationPath.h"
 #include "Settings/SettingType/SettingsType-GameSetting.h"
 #include "Settings/SettingType/SettingsType-GameSettingIndex.h"
+#include "Settings/SettingType/SettingsType-RDB.h"
 #include "Settings/SettingType/SettingsType-RDBCpuType.h"
 #include "Settings/SettingType/SettingsType-RDBOnOff.h"
 #include "Settings/SettingType/SettingsType-RDBRamSize.h"
 #include "Settings/SettingType/SettingsType-RDBSaveChip.h"
-#include "Settings/SettingType/SettingsType-RDBYesNo.h"
 #include "Settings/SettingType/SettingsType-RelativePath.h"
 #include "Settings/SettingType/SettingsType-RomDatabase.h"
 #include "Settings/SettingType/SettingsType-RomDatabaseIndex.h"
@@ -34,6 +34,7 @@ CSettings::~CSettings()
 {
     CSettingTypeApplication::CleanUp();
     CSettingTypeRomDatabase::CleanUp();
+    CSettingTypeRDBUser::CleanUp();
     CSettingTypeGame::CleanUp();
 
     for (SETTING_MAP::iterator iter = m_SettingInfo.begin(); iter != m_SettingInfo.end(); iter++)
@@ -79,6 +80,7 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Cmd_ComboDiskFile, new CSettingTypeTempString(""));
 
     // Support files
+    AddHandler(SupportFile_SettingsDirectory, new CSettingTypeTempString(""));
     AddHandler(SupportFile_Settings, new CSettingTypeApplicationPath("Settings", "ConfigFile", SupportFile_SettingsDefault));
     AddHandler(SupportFile_SettingsDefault, new CSettingTypeRelativePath("Config", "Project64.cfg"));
     AddHandler(SupportFile_RomDatabase, new CSettingTypeApplicationPath("Settings", "RomDatabase", SupportFile_RomDatabaseDefault));
@@ -126,16 +128,17 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Setting_SyncViaAudioEnabled, new CSettingTypeTempBool(false, "SyncViaAudioEnabled"));
     AddHandler(Setting_DiskSaveType, new CSettingTypeApplication("Settings", "Disk Save Type", (uint32_t)1));
     AddHandler(Setting_UpdateControllerOnRefresh, new CSettingTypeTempBool(false));
+    AddHandler(Setting_AllocatedRdramSize, new CSettingTypeTempNumber(0, "AllocatedRdramSize"));
 
-    AddHandler(Default_RDRamSize, new CSettingTypeApplication("Defaults", "RDRAM Size", 0x800000u));
+    AddHandler(Default_RDRamSizeUnknown, new CSettingTypeApplication("Defaults", "Unknown RDRAM Size", 0x800000u));
+    AddHandler(Default_RDRamSizeKnown, new CSettingTypeApplication("Defaults", "Known RDRAM Size", 0x400000u));
+    AddHandler(Default_RspMultiThreaded, new CSettingTypeApplication("Defaults", "Rsp Multi Threaded Default", false));
     AddHandler(Default_UseHleGfx, new CSettingTypeApplication("Defaults", "HLE GFX Default", true));
     AddHandler(Default_ViRefreshRate, new CSettingTypeApplication("Defaults", "ViRefresh", 1500u));
     AddHandler(Default_AiCountPerBytes, new CSettingTypeApplication("Defaults", "AiCountPerBytes", 0u));
     AddHandler(Default_CounterFactor, new CSettingTypeApplication("Defaults", "Counter Factor", 2u));
-    AddHandler(Default_32Bit, new CSettingTypeApplication("Defaults", "32bit", false));
     AddHandler(Default_SyncViaAudio, new CSettingTypeApplication("Defaults", "Audio-Sync Audio", true));
     AddHandler(Default_FixedAudio, new CSettingTypeApplication("Defaults", "Fixed Audio", true));
-    AddHandler(Default_UnalignedDMA, new CSettingTypeApplication("Defaults", "Unaligned DMA", false));
     AddHandler(Default_RandomizeSIPIInterrupts, new CSettingTypeApplication("Defaults", "Randomize SI/PI Interrupts", true));
     AddHandler(Default_SMM_Protect_Memory, new CSettingTypeApplication("Defaults", "SMM-Protect", false));
     AddHandler(Default_DiskSeekTiming, new CSettingTypeApplication("Defaults", "Disk Seek Timing", (uint32_t)DiskSeek_Turbo));
@@ -144,40 +147,42 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Rdb_RPCKey, new CSettingTypeRomDatabase("RPC Key", Game_RPCKey));
     AddHandler(Rdb_SaveChip, new CSettingTypeRDBSaveChip("Save Type", (uint32_t)SaveChip_Auto));
     AddHandler(Rdb_CpuType, new CSettingTypeRDBCpuType("CPU Type", CPU_Recompiler));
-    AddHandler(Rdb_RDRamSize, new CSettingTypeRDBRDRamSize("RDRAM Size", Default_RDRamSize));
+    AddHandler(Rdb_RDRamSize, new CSettingTypeRDBRDRamSize("RDRAM Size", Default_RDRamSizeKnown));
     AddHandler(Rdb_CounterFactor, new CSettingTypeRomDatabase("Counter Factor", Default_CounterFactor));
-    AddHandler(Rdb_DelayDP, new CSettingTypeRDBYesNo("Delay DP", true));
-    AddHandler(Rdb_DelaySi, new CSettingTypeRDBYesNo("Delay SI", false));
-    AddHandler(Rdb_32Bit, new CSettingTypeRDBYesNo("32bit", Default_32Bit));
-    AddHandler(Rdb_FastSP, new CSettingTypeRDBYesNo("Fast SP", true));
+    AddHandler(Rdb_DelayDP, new CSettingTypeRDB("Delay DP", true));
+    AddHandler(Rdb_DelaySi, new CSettingTypeRDB("Delay SI", false));
+    AddHandler(Rdb_32Bit, new CSettingTypeRDB("32bit", false));
+    AddHandler(Rdb_FastSP, new CSettingTypeRDB("Fast SP", true));
     AddHandler(Rdb_FixedAudio, new CSettingTypeRomDatabase("Fixed Audio", Default_FixedAudio));
     AddHandler(Rdb_SyncViaAudio, new CSettingTypeRomDatabase("Audio-Sync Audio", Default_SyncViaAudio));
-    AddHandler(Rdb_RspAudioSignal, new CSettingTypeRDBYesNo("Audio Signal", false));
+    AddHandler(Rdb_RspAudioSignal, new CSettingTypeRDB("Audio Signal", false));
     AddHandler(Rdb_TLB_VAddrStart, new CSettingTypeRomDatabase("TLB: Vaddr Start", (uint32_t)0));
     AddHandler(Rdb_TLB_VAddrLen, new CSettingTypeRomDatabase("TLB: Vaddr Len", (uint32_t)0));
     AddHandler(Rdb_TLB_PAddrStart, new CSettingTypeRomDatabase("TLB: PAddr Start", (uint32_t)0));
+    AddHandler(Rdb_RspMultiThreaded, new CSettingTypeRomDatabase("Rsp Multi Threaded", Plugin_RspMultiThreaded));
     AddHandler(Rdb_UseHleGfx, new CSettingTypeRomDatabase("HLE GFX RDB", Plugin_UseHleGfx));
     AddHandler(Rdb_UseHleAudio, new CSettingTypeRomDatabase("HLE Audio RDB", Plugin_UseHleAudio));
     AddHandler(Rdb_ScreenHertz, new CSettingTypeRomDatabase("ScreenHertz", (uint32_t)0));
     AddHandler(Rdb_FuncLookupMode, new CSettingTypeRomDatabase("FuncFind", (uint32_t)FuncFind_PhysicalLookup));
-    AddHandler(Rdb_RegCache, new CSettingTypeRDBYesNo("Reg Cache", true));
+    AddHandler(Rdb_RegCache, new CSettingTypeRDB("Reg Cache", true));
+    AddHandler(Rdb_FpuRegCache, new CSettingTypeRDB("FPU Reg Cache", false));
 #ifdef ANDROID
     AddHandler(Rdb_BlockLinking, new CSettingTypeRDBOnOff("Linking", false));
 #else
     AddHandler(Rdb_BlockLinking, new CSettingTypeRDBOnOff("Linking", true));
 #endif
     AddHandler(Rdb_SMM_Cache, new CSettingTypeRomDatabase("SMM-Cache", true));
-    AddHandler(Rdb_SMM_StoreInstruc, new CSettingTypeRomDatabase("SMM-StoreInstr", false));
+    AddHandler(Rdb_SMM_StoreInstruc, new CSettingTypeRomDatabase("SMM-StoreInst", false));
     AddHandler(Rdb_SMM_PIDMA, new CSettingTypeRomDatabase("SMM-PI DMA", true));
     AddHandler(Rdb_SMM_TLB, new CSettingTypeRomDatabase("SMM-TLB", true));
     AddHandler(Rdb_SMM_Protect, new CSettingTypeRomDatabase("SMM-Protect", Default_SMM_Protect_Memory));
     AddHandler(Rdb_SMM_ValidFunc, new CSettingTypeRomDatabase("SMM-FUNC", true));
     AddHandler(Rdb_ViRefreshRate, new CSettingTypeRomDatabase("ViRefresh", Default_ViRefreshRate));
     AddHandler(Rdb_AiCountPerBytes, new CSettingTypeRomDatabase("AiCountPerBytes", Default_AiCountPerBytes));
-    AddHandler(Rdb_AudioResetOnLoad, new CSettingTypeRDBYesNo("AudioResetOnLoad", false));
-    AddHandler(Rdb_AllowROMWrites, new CSettingTypeRDBYesNo("AllowROMWrites", false));
-    AddHandler(Rdb_CRC_Recalc, new CSettingTypeRDBYesNo("CRC-Recalc", false));
-    AddHandler(Rdb_UnalignedDMA, new CSettingTypeRomDatabase("Unaligned DMA", Default_UnalignedDMA));
+    AddHandler(Rdb_AudioResetOnLoad, new CSettingTypeRDB("AudioResetOnLoad", false));
+    AddHandler(Rdb_AllowROMWrites, new CSettingTypeRDB("AllowROMWrites", false));
+    AddHandler(Rdb_CRC_Recalc, new CSettingTypeRDB("CRC-Recalc", false));
+    AddHandler(Rdb_UnalignedDMA, new CSettingTypeRomDatabase("Unaligned DMA", false));
     AddHandler(Rdb_RandomizeSIPIInterrupts, new CSettingTypeRomDatabase("Randomize SI/PI Interrupts", Default_RandomizeSIPIInterrupts));
     AddHandler(Rdb_DiskSeekTiming, new CSettingTypeRomDatabase("DiskSeekTiming", Default_DiskSeekTiming));
 
@@ -187,6 +192,7 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Game_GameName, new CSettingTypeTempString(""));
     AddHandler(Cfg_GoodName, new CSettingTypeGame("Good Name", ""));
     AddHandler(Game_TempLoaded, new CSettingTypeTempBool(false));
+    AddHandler(Game_Known, new CSettingTypeTempBool(false));
     AddHandler(Game_SystemType, new CSettingTypeTempNumber(SYSTEM_NTSC));
     AddHandler(Game_EditPlugin_Gfx, new CSettingTypeGame("Plugin-Gfx", Default_None));
     AddHandler(Game_EditPlugin_Audio, new CSettingTypeGame("Plugin-Audio", Default_None));
@@ -214,11 +220,13 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
 #endif
     AddHandler(Game_LastSaveTime, new CSettingTypeTempNumber(0));
     AddHandler(Game_SyncViaAudio, new CSettingTypeGame("Sync Audio", Rdb_SyncViaAudio));
+    AddHandler(Game_RspMultiThreaded, new CSettingTypeGame("Rsp Multi Threaded", Rdb_RspMultiThreaded));
     AddHandler(Game_UseHleGfx, new CSettingTypeGame("HLE GFX", Rdb_UseHleGfx));
     AddHandler(Game_UseHleAudio, new CSettingTypeGame("HLE Audio", Rdb_UseHleAudio));
     AddHandler(Game_ScreenHertz, new CSettingTypeGame("ScreenHertz", Rdb_ScreenHertz));
     AddHandler(Game_FuncLookupMode, new CSettingTypeGame("FuncFind", Rdb_FuncLookupMode));
     AddHandler(Game_RegCache, new CSettingTypeGame("Reg Cache", Rdb_RegCache));
+    AddHandler(Game_FPURegCache, new CSettingTypeGame("FPU Reg Cache", Rdb_FpuRegCache));
     AddHandler(Game_BlockLinking, new CSettingTypeGame("Linking", Rdb_BlockLinking));
     AddHandler(Game_SMM_StoreInstruc, new CSettingTypeGame("SMM-StoreInst", Rdb_SMM_StoreInstruc));
     AddHandler(Game_SMM_Cache, new CSettingTypeGame("SMM-Cache", Rdb_SMM_Cache));
@@ -320,6 +328,7 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
 
     AddHandler(Debugger_Enabled, new CSettingTypeApplication("Debugger", "Debugger", false));
     AddHandler(Debugger_EndOnPermLoop, new CSettingTypeApplication("Debugger", "End On Perm Loop", false));
+    AddHandler(Debugger_FpuExceptionInRecompiler, new CSettingTypeApplication("Debugger", "Fpu Exception In Recompiler", false));
     AddHandler(Debugger_BreakOnUnhandledMemory, new CSettingTypeApplication("Debugger", "Break On Unhandled Memory", false));
     AddHandler(Debugger_BreakOnAddressError, new CSettingTypeApplication("Debugger", "Break On Address Error", false));
     AddHandler(Debugger_StepOnBreakOpCode, new CSettingTypeApplication("Debugger", "Step On Break OpCode", false));
@@ -372,20 +381,21 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
 
     // Plugin
 #ifdef _WIN32
-    AddHandler(Plugin_RSP_Current, new CSettingTypeApplication("Plugin", "RSP Dll", "RSP\\RSP 1.7.dll"));
 #ifdef _DEBUG
+    AddHandler(Plugin_RSP_Current, new CSettingTypeApplication("Plugin", "RSP Dll", "RSP\\Project64-RSP_d.dll"));
     AddHandler(Plugin_GFX_Default, new CSettingTypeApplication("Plugin", "Graphics Dll Default", "GFX\\Project64-Video_d.dll"));
     AddHandler(Plugin_GFX_Current, new CSettingTypeApplication("Plugin", "Graphics Dll", Plugin_GFX_Default));
     AddHandler(Plugin_AUDIO_Current, new CSettingTypeApplication("Plugin", "Audio Dll", "Audio\\Project64-Audio_d.dll"));
     AddHandler(Plugin_CONT_Current, new CSettingTypeApplication("Plugin", "Controller Dll", "Input\\Project64-Input_d.dll"));
 #else
+    AddHandler(Plugin_RSP_Current, new CSettingTypeApplication("Plugin", "RSP Dll", "RSP\\Project64-RSP.dll"));
     AddHandler(Plugin_GFX_Default, new CSettingTypeApplication("Plugin", "Graphics Dll Default", "GFX\\Project64-Video.dll"));
     AddHandler(Plugin_GFX_Current, new CSettingTypeApplication("Plugin", "Graphics Dll", Plugin_GFX_Default));
     AddHandler(Plugin_AUDIO_Current, new CSettingTypeApplication("Plugin", "Audio Dll", "Audio\\Project64-Audio.dll"));
     AddHandler(Plugin_CONT_Current, new CSettingTypeApplication("Plugin", "Controller Dll", "Input\\Project64-Input.dll"));
 #endif
 #else
-    AddHandler(Plugin_RSP_Current, new CSettingTypeApplication("Plugin", "RSP Dll", "libProject64-rsp-hle.so"));
+    AddHandler(Plugin_RSP_Current, new CSettingTypeApplication("Plugin", "RSP Dll", "libPlugin-rsp.so"));
     AddHandler(Plugin_GFX_Current, new CSettingTypeApplication("Plugin", "Graphics Dll", "libProject64-video.so"));
     AddHandler(Plugin_AUDIO_Current, new CSettingTypeApplication("Plugin", "Audio Dll", "libProject64-audio-android.so"));
     AddHandler(Plugin_CONT_Current, new CSettingTypeApplication("Plugin", "Controller Dll", "libProject64-input-android.so"));
@@ -395,6 +405,7 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Plugin_AUDIO_CurVer, new CSettingTypeApplication("Plugin", "Audio Dll Ver", ""));
     AddHandler(Plugin_CONT_CurVer, new CSettingTypeApplication("Plugin", "Controller Dll Ver", ""));
 
+    AddHandler(Plugin_RspMultiThreaded, new CSettingTypeApplication("RSP", "Rsp Multi Threaded Plugin", Default_RspMultiThreaded));
     AddHandler(Plugin_UseHleGfx, new CSettingTypeApplication("RSP", "HLE GFX Plugin", Default_UseHleGfx));
     AddHandler(Plugin_UseHleAudio, new CSettingTypeApplication("RSP", "HLE Audio Plugin", false));
     AddHandler(Plugin_EnableAudio, new CSettingTypeApplication("Audio", "Enable Audio", true));
@@ -478,6 +489,19 @@ uint32_t CSettings::FindSetting(CSettings * _this, const char * Name)
         {
             CSettingTypeTempBool * BoolSetting = (CSettingTypeTempBool *)Setting;
             if (_stricmp(BoolSetting->GetName(), Name) != 0)
+            {
+                continue;
+            }
+            if (setting_id != 0)
+            {
+                g_Notify->BreakPoint(__FILE__, __LINE__);
+            }
+            setting_id = iter->first;
+        }
+        else if (Setting->GetSettingType() == SettingType_NumberVariable)
+        {
+            CSettingTypeTempNumber * NumberSetting = (CSettingTypeTempNumber *)Setting;
+            if (_stricmp(NumberSetting->GetName(), Name) != 0)
             {
                 continue;
             }
@@ -678,6 +702,7 @@ bool CSettings::Initialize(const char * BaseDirectory, const char * AppName)
     AddHowToHandleSetting(BaseDirectory);
     CSettingTypeApplication::Initialize();
     CSettingTypeRomDatabase::Initialize();
+    CSettingTypeRDBUser::Initialize();
     CSettingTypeGame::Initialize();
 
     g_Settings->SaveString(Setting_ApplicationName, AppName);

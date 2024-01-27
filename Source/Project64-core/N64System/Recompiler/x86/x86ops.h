@@ -17,7 +17,6 @@ class CX86Ops :
     public asmjit::Logger
 {
 public:
-
     enum Multipler
     {
         Multip_x1 = 1,
@@ -40,7 +39,8 @@ public:
     void X86HardBreakPoint();
     void X86BreakPoint(const char * FileName, int32_t LineNumber);
     void CallFunc(uint32_t FunctPtr, const char * FunctName);
-    void CallThis(uint32_t ThisPtr, uint32_t FunctPtr, char * FunctName, uint32_t StackSize);
+    void CallThis(uint32_t ThisPtr, uint32_t FunctPtr, const char * FunctName, uint32_t StackSize);
+    void CompConstByteToVariable(void * Variable, const char * VariableName, uint8_t Const);
     void CompConstToVariable(void * Variable, const char * VariableName, uint32_t Const);
     void CompConstToX86reg(const asmjit::x86::Gp & Reg, uint32_t Const);
     void CompX86regToVariable(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName);
@@ -55,6 +55,7 @@ public:
     void JlLabel(const char * LabelName, asmjit::Label & JumpLabel);
     void JmpLabel(const char * LabelName, asmjit::Label & JumpLabel);
     void JneLabel(const char * LabelName, asmjit::Label & JumpLabel);
+    void JnpLabel(const char * LabelName, asmjit::Label & JumpLabel);
     void JnsLabel(const char * LabelName, asmjit::Label & JumpLabel);
     void JnzLabel(const char * LabelName, asmjit::Label & JumpLabel);
     void JoLabel(const char * LabelName, asmjit::Label & JumpLabel);
@@ -130,7 +131,7 @@ private:
     };
 
     static x86Reg RegValue(const asmjit::x86::Gp & Reg);
-    asmjit::Error _log(const char* data, size_t size) noexcept;
+    asmjit::Error _log(const char * data, size_t size) noexcept;
     void AddSymbol(const char * SymbolKey, const char * SymbolValue);
     void RemoveSymbol(const char * SymbolKey);
     std::string VariableSymbol(void * Variable) const;
@@ -138,7 +139,7 @@ private:
     static void BreakPointNotification(const char * FileName, int32_t LineNumber);
 
     typedef std::map<std::string, std::string> SymbolMap;
-    
+
     SymbolMap m_Symbols;
     CCodeBlock & m_CodeBlock;
 };

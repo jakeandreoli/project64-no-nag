@@ -52,7 +52,6 @@
 #define IDD_Debugger_Symbols            172
 #define IDD_Debugger_AddSymbol          174
 #define IDR_MEM_BP_POPUP                177
-#define IDR_JSAPI_TEXT                  181
 #define IDD_Debugger_DMALog             182
 #define IDD_Debugger_StackTrace         184
 #define IDD_Debugger_RegCOP0            185
@@ -116,7 +115,6 @@
 #define IDC_LIST                        1012
 #define IDC_HLE_AUDIO                   1012
 #define IDC_SMM_CACHE                   1012
-#define IDC_ROM_32BIT                   1012
 #define IDC_INFO_COUNTRY                1013
 #define IDC_SHIFT                       1013
 #define IDC_TLB                         1013
@@ -127,6 +125,7 @@
 #define IDC_INFO_CRC1                   1014
 #define IDC_ASSIGNED_MENU_ITEM          1014
 #define IDC_TLB_RULES                   1014
+#define IDC_ROM_32BIT                   1014
 #define IDC_INFO_CRC2                   1015
 #define IDC_GOOD_NAME                   1015
 #define GFX_LIST                        1016
@@ -205,33 +204,21 @@
 #define IDC_UP                          1069
 #define IDC_AUTO_OTHER                  1070
 #define IDC_DOWN                        1070
-#define IDC_TEAM                        1070
 #define IDC_AUTO_DIR                    1071
-#define IDC_ZILMAR_DETAILS              1071
 #define IDC_ABOUT_PROJECT               1071
 #define IDC_AUTO_DEFAULT                1072
-#define IDC_JABO_DETAILS                1072
 #define IDC_SELECT_AUTO_DIR             1073
-#define IDC_SMIFF_DETAILS               1073
 #define IDC_INSTANT_OTHER               1074
-#define IDC_GENT_DETAILS                1074
 #define IDC_INSTANT_DIR                 1075
-#define IDC_ZILMAR                      1075
 #define IDC_INSTANT_DEFAULT             1076
-#define IDC_JABO                        1076
 #define IDC_SELECT_INSTANT_DIR          1077
-#define IDC_SMIFF                       1077
 #define IDC_SNAP_OTHER                  1078
-#define IDC_GENT                        1078
 #define IDC_SNAP_DIR                    1079
-#define IDC_THANKS                      1079
 #define IDC_THANKS_CORE                 1079
 #define IDC_SNAP_DEFAULT                1080
-#define IDC_THANK_LIST                  1080
 #define IDC_CORE_THANK_LIST             1080
 #define IDC_SELECT_SNAP_DIR             1081
 #define IDC_THANKYOU                    1081
-#define IDC_THANK_LIST2                 1082
 #define IDC_THANKYOU_LIST               1082
 #define IDC_START_ON_ROM_OPEN           1084
 #define IDC_BMP_LOGO                    1084
@@ -240,6 +227,7 @@
 #define IDC_VERSION                     1087
 #define IDC_CPU_TYPE                    1088
 #define IDC_SELECT_LANG                 1088
+#define IDC_RDRAM_SIZE_UNKNOWN          1088
 #define IDC_SAVE_TYPE                   1089
 #define IDC_MENU_ITEMS                  1089
 #define IDC_PAGELIST                    1090
@@ -264,6 +252,7 @@
 #define IDC_CONT_NAME                   1100
 #define IDC_COUNTPERBYTE                1100
 #define ID_SUPPORT_PJ64                 1100
+#define IDC_ROM_FPUREGCACHE             1100
 #define IDC_DIR_FRAME1                  1101
 #define IDC_ROM_FASTSP                  1101
 #define IDC_INFO                        1101
@@ -416,7 +405,6 @@
 #define IDC_F15_EDIT                    1219
 #define IDC_F16_EDIT                    1220
 #define IDC_F17_EDIT                    1221
-#define IDC_IPLDIR_TXT                  1222
 #define IDC_F18_EDIT                    1222
 #define IDC_F19_EDIT                    1223
 #define IDC_F20_EDIT                    1224
@@ -464,7 +452,6 @@
 #define IDC_EXPORT_BTN                  1305
 #define IDC_RUN_BTN                     1305
 #define IDC_DMA_ROM_EDIT                1306
-#define IDC_STOP_BTN                    1306
 #define IDC_TRACE_STATIC                1307
 #define IDC_RAM_STATIC                  1308
 #define IDC_ROM_STATIC                  1309
@@ -488,7 +475,6 @@
 #define IDC_COP0_15_EDIT                1330
 #define IDC_COP0_16_EDIT                1331
 #define IDC_COP0_17_EDIT                1332
-#define IDC_COP0_18_EDIT                1333
 #define IDC_FILTER_STATIC               1339
 #define IDC_BLOCK_INFO                  1350
 #define IDC_BACK_BTN                    1352
@@ -724,7 +710,6 @@
 #define IDC_F8_LBL                      1583
 #define IDC_BTN_PLUGIN                  1583
 #define IDC_F9_LBL                      1584
-#define IDC_LIST1                       1584
 #define IDC_PLUGIN_LIST                 1584
 #define IDC_F10_LBL                     1585
 #define IDC_ADD_EDIT                    1585
@@ -869,11 +854,13 @@
 #define IDC_CANCEL                      1724
 #define IDC_APPLY                       1725
 #define IDC_RADIO_GLIDEN64              1728
-#define IDC_RADIO_JABO                  1729
 #define IDC_RADIO_PJ64_VIDEO            1729
 #define IDC_REMOVE_BTN                  1734
 #define IDC_ADD_BTN                     1735
 #define IDC_AUTORUN_LIST                1737
+#define IDC_RDRAM_SIZE_KNOWN            1738
+#define IDC_MEMORY_SIZE_UNKOWN_TEXT     1739
+#define IDC_MEMORY_SIZE_KNOWN_TEXT      1740
 #define ID_POPUPMENU_PLAYGAMEWITHDISK   40008
 #define ID_POPUPMENU_ADDSYMBOL          40013
 #define ID_POPUPMENU_VIEWDISASM         40017
@@ -946,9 +933,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        227
+#define _APS_NEXT_RESOURCE_VALUE        228
 #define _APS_NEXT_COMMAND_VALUE         40122
-#define _APS_NEXT_CONTROL_VALUE         1738
+#define _APS_NEXT_CONTROL_VALUE         1741
 #define _APS_NEXT_SYMED_VALUE           102
 #endif
 #endif

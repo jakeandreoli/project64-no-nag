@@ -11,6 +11,25 @@ R4300iInstruction::R4300iInstruction(uint32_t Address, uint32_t Instruction) :
     m_Instruction.Value = Instruction;
 }
 
+R4300iInstruction & R4300iInstruction::operator=(const R4300iInstruction & Instr)
+{
+    m_Address = Instr.m_Address;
+    m_Instruction.Value = Instr.m_Instruction.Value;
+    m_Name[0] = '\0';
+    m_Param[0] = '\0';
+    return *this;
+}
+
+const uint32_t & R4300iInstruction::Address() const
+{
+    return m_Address;
+}
+
+const R4300iOpcode & R4300iInstruction::Opcode() const
+{
+    return m_Instruction;
+}
+
 const char * R4300iInstruction::Name()
 {
     if (m_Name[0] == '\0')
@@ -97,16 +116,14 @@ bool R4300iInstruction::DelaySlotEffectsCompare(uint32_t DelayInstruction) const
         }
         return false;
     }
-    uint32_t WriteReg = 0, ReadReg1 = 0, ReadReg2 = 0;
+    uint32_t WriteReg = DelaySlot.WritesGPR(), ReadReg1 = 0, ReadReg2 = 0;
     ReadsGPR(ReadReg1, ReadReg2);
-    DelaySlot.WritesGPR(WriteReg);
     if (WriteReg != 0 && (WriteReg == ReadReg1 || WriteReg == ReadReg2))
     {
         return true;
     }
     return false;
 }
-
 
 void R4300iInstruction::ReadsGPR(uint32_t & Reg1, uint32_t & Reg2) const
 {
@@ -177,7 +194,7 @@ void R4300iInstruction::ReadsGPR(uint32_t & Reg1, uint32_t & Reg2) const
     Reg2 = 0;
 }
 
-void R4300iInstruction::WritesGPR(uint32_t & nReg) const
+uint32_t R4300iInstruction::WritesGPR(void) const
 {
     uint32_t op = m_Instruction.op;
     if (op == R4300i_SPECIAL)
@@ -185,30 +202,26 @@ void R4300iInstruction::WritesGPR(uint32_t & nReg) const
         uint32_t fn = m_Instruction.funct;
         if (fn >= R4300i_SPECIAL_SLL && fn <= R4300i_SPECIAL_SRAV || fn >= R4300i_SPECIAL_DSLLV && fn <= R4300i_SPECIAL_DSRAV || fn >= R4300i_SPECIAL_DIVU && fn <= R4300i_SPECIAL_DSUBU || fn >= R4300i_SPECIAL_DSLL && fn <= R4300i_SPECIAL_DSRA32 || fn == R4300i_SPECIAL_JALR || fn == R4300i_SPECIAL_MFLO || fn == R4300i_SPECIAL_MFHI)
         {
-            nReg = m_Instruction.rd;
-            return;
+            return m_Instruction.rd;
         }
     }
     else if (op == R4300i_REGIMM)
     {
         if (op >= R4300i_REGIMM_BLTZAL && op <= R4300i_REGIMM_BGEZALL)
         {
-            nReg = 31; // RA
-            return;
+            return 31; // RA
         }
     }
     else if (op >= R4300i_DADDI && op <= R4300i_LWU || op >= R4300i_ADDI && op <= R4300i_LUI || op == R4300i_LL || op == R4300i_LD || (op == R4300i_CP0 && m_Instruction.fmt == R4300i_COP0_MF) || (op == R4300i_CP1 && m_Instruction.fmt == R4300i_COP1_MF) || (op == R4300i_CP1 && m_Instruction.fmt == R4300i_COP1_CF))
     {
-        nReg = m_Instruction.rt;
-        return;
+        return m_Instruction.rt;
     }
 
     if (op == R4300i_JAL)
     {
-        nReg = 31; // RA
-        return;
+        return 31; // RA
     }
-    nReg = 0;
+    return (uint32_t)-1;
 }
 
 bool R4300iInstruction::ReadsHI() const
@@ -233,7 +246,7 @@ bool R4300iInstruction::WritesHI() const
     return false;
 }
 
-bool R4300iInstruction::WritesLO() const 
+bool R4300iInstruction::WritesLO() const
 {
     if (m_Instruction.op == R4300i_SPECIAL)
     {
@@ -407,6 +420,13 @@ void R4300iInstruction::DecodeName(void)
     case R4300i_CP1:
         DecodeCop1Name();
         break;
+    case R4300i_CP2:
+        DecodeCop2Name();
+        break;
+    case R4300i_CP3:
+        strcpy(m_Name, "Reserved(CP3)");
+        sprintf(m_Param, "");
+        break;
     case R4300i_BEQL:
         if (m_Instruction.rs == m_Instruction.rt)
         {
@@ -534,6 +554,10 @@ void R4300iInstruction::DecodeName(void)
         break;
     case R4300i_LWC1:
         strcpy(m_Name, "LWC1");
+        sprintf(m_Param, "%s, 0x%04X (%s)", CRegName::FPR[m_Instruction.rt], m_Instruction.offset, CRegName::GPR[m_Instruction.base]);
+        break;
+    case R4300i_LLD:
+        strcpy(m_Name, "LLD");
         sprintf(m_Param, "%s, 0x%04X (%s)", CRegName::FPR[m_Instruction.rt], m_Instruction.offset, CRegName::GPR[m_Instruction.base]);
         break;
     case R4300i_LDC1:
@@ -1083,5 +1107,39 @@ void R4300iInstruction::DecodeCop1Name(void)
     default:
         strcpy(m_Name, "UNKNOWN COP1");
         sprintf(m_Param, "0x%08X", m_Instruction.Value);
+    }
+}
+
+void R4300iInstruction::DecodeCop2Name(void)
+{
+    switch (m_Instruction.fmt)
+    {
+    case R4300i_COP2_MF:
+        strcpy(m_Name, "MFC2");
+        sprintf(m_Param, "%s, R%d", CRegName::GPR[m_Instruction.rt], m_Instruction.fs);
+        break;
+    case R4300i_COP2_DMF:
+        strcpy(m_Name, "DMFC2");
+        sprintf(m_Param, "%s, R%d", CRegName::GPR[m_Instruction.rt], m_Instruction.fs);
+        break;
+    case R4300i_COP2_CF:
+        strcpy(m_Name, "CFC2");
+        sprintf(m_Param, "%s, R%d", CRegName::GPR[m_Instruction.rt], m_Instruction.fs);
+        break;
+    case R4300i_COP2_MT:
+        strcpy(m_Name, "MTC2");
+        sprintf(m_Param, "%s, R%d", CRegName::GPR[m_Instruction.rt], m_Instruction.fs);
+        break;
+    case R4300i_COP2_DMT:
+        strcpy(m_Name, "DMTC2");
+        sprintf(m_Param, "%s, R%d", CRegName::GPR[m_Instruction.rt], m_Instruction.fs);
+        break;
+    case R4300i_COP2_CT:
+        strcpy(m_Name, "CTC2");
+        sprintf(m_Param, "%s, R%d", CRegName::GPR[m_Instruction.rt], m_Instruction.fs);
+        break;
+    default:
+        strcpy(m_Name, "Reserved(CP2)");
+        strcpy(m_Param, "");
     }
 }

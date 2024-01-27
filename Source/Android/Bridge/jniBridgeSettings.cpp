@@ -14,13 +14,13 @@ CJniBridegSettings::CJniBridegSettings()
     m_RefCount += 1;
     if (m_RefCount == 1)
     {
-        g_Settings->RegisterChangeCB(GameRunning_CPU_Running,NULL,RefreshSettings);
+        g_Settings->RegisterChangeCB(GameRunning_CPU_Running, NULL, RefreshSettings);
         RefreshSettings(NULL);
     }
 
-#define ADD_SETTING(ID) m_SettingNameList.insert(SettingNameList::value_type("Core." #ID,ID));
-#define ADD_UI_SETTING(ID) m_SettingNameList.insert(SettingNameList::value_type("UISettingID." #ID,(SettingID)ID));
-#define ADD_VIDEO_SETTING(ID) m_SettingNameList.insert(SettingNameList::value_type("VideoSettingID." #ID,(SettingID)(FirstGfxSettings + ID)));
+#define ADD_SETTING(ID) m_SettingNameList.insert(SettingNameList::value_type("Core." #ID, ID));
+#define ADD_UI_SETTING(ID) m_SettingNameList.insert(SettingNameList::value_type("UISettingID." #ID, (SettingID)ID));
+#define ADD_VIDEO_SETTING(ID) m_SettingNameList.insert(SettingNameList::value_type("VideoSettingID." #ID, (SettingID)(FirstGfxSettings + ID)));
 
     ADD_SETTING(Cmd_BaseDirectory);
     ADD_SETTING(Cmd_RomFile);
@@ -70,17 +70,19 @@ CJniBridegSettings::CJniBridegSettings()
     ADD_SETTING(Setting_SyncViaAudioEnabled);
     ADD_SETTING(Setting_Enhancement);
     ADD_SETTING(Setting_DiskSaveType);
+    ADD_SETTING(Setting_UpdateControllerOnRefresh);
+    ADD_SETTING(Setting_AllocatedRdramSize);
 
     // Default settings
-    ADD_SETTING(Default_RDRamSize);
+    ADD_SETTING(Default_RDRamSizeUnknown);
+    ADD_SETTING(Default_RDRamSizeKnown);
+    ADD_SETTING(Default_RspMultiThreaded);
     ADD_SETTING(Default_UseHleGfx);
     ADD_SETTING(Default_ViRefreshRate);
     ADD_SETTING(Default_AiCountPerBytes);
     ADD_SETTING(Default_CounterFactor);
-    ADD_SETTING(Default_32Bit);
     ADD_SETTING(Default_SyncViaAudio);
     ADD_SETTING(Default_FixedAudio);
-    ADD_SETTING(Default_UnalignedDMA);
     ADD_SETTING(Default_RandomizeSIPIInterrupts);
     ADD_SETTING(Default_SMM_Protect_Memory);
     ADD_SETTING(Default_DiskSeekTiming);
@@ -101,6 +103,7 @@ CJniBridegSettings::CJniBridegSettings()
     ADD_SETTING(Rdb_TLB_VAddrStart);
     ADD_SETTING(Rdb_TLB_VAddrLen);
     ADD_SETTING(Rdb_TLB_PAddrStart);
+    ADD_SETTING(Rdb_RspMultiThreaded);
     ADD_SETTING(Rdb_UseHleGfx);
     ADD_SETTING(Rdb_UseHleAudio);
     ADD_SETTING(Rdb_ScreenHertz);
@@ -118,7 +121,6 @@ CJniBridegSettings::CJniBridegSettings()
     ADD_SETTING(Rdb_AudioResetOnLoad);
     ADD_SETTING(Rdb_AllowROMWrites);
     ADD_SETTING(Rdb_CRC_Recalc);
-    ADD_SETTING(Rdb_UnalignedDMA);
     ADD_SETTING(Rdb_RandomizeSIPIInterrupts);
     ADD_SETTING(Rdb_RPCKey);
     ADD_SETTING(Rdb_DiskSeekTiming);
@@ -160,9 +162,11 @@ CJniBridegSettings::CJniBridegSettings()
     ADD_SETTING(Game_FastSP);
     ADD_SETTING(Game_FuncLookupMode);
     ADD_SETTING(Game_RegCache);
+    ADD_SETTING(Game_FPURegCache);
     ADD_SETTING(Game_BlockLinking);
     ADD_SETTING(Game_ScreenHertz);
     ADD_SETTING(Game_RspAudioSignal);
+    ADD_SETTING(Game_RspMultiThreaded);
     ADD_SETTING(Game_UseHleGfx);
     ADD_SETTING(Game_UseHleAudio);
     ADD_SETTING(Game_ViRefreshRate);
@@ -175,7 +179,6 @@ CJniBridegSettings::CJniBridegSettings()
     ADD_SETTING(Game_LoadSaveAtStart);
     ADD_SETTING(Game_OverClockModifier);
     ADD_SETTING(Game_FullSpeed);
-    ADD_SETTING(Game_UnalignedDMA);
     ADD_SETTING(Game_RandomizeSIPIInterrupts);
     ADD_SETTING(Game_RPCKey);
     ADD_SETTING(Game_DiskSeekTiming);
@@ -246,6 +249,7 @@ CJniBridegSettings::CJniBridegSettings()
     // Debugger
     ADD_SETTING(Debugger_Enabled);
     ADD_SETTING(Debugger_EndOnPermLoop);
+    ADD_SETTING(Debugger_FpuExceptionInRecompiler);
     ADD_SETTING(Debugger_BreakOnUnhandledMemory);
     ADD_SETTING(Debugger_BreakOnAddressError);
     ADD_SETTING(Debugger_StepOnBreakOpCode);
@@ -305,6 +309,7 @@ CJniBridegSettings::CJniBridegSettings()
     ADD_SETTING(Plugin_AUDIO_CurVer);
     ADD_SETTING(Plugin_CONT_Current);
     ADD_SETTING(Plugin_CONT_CurVer);
+    ADD_SETTING(Plugin_RspMultiThreaded);
     ADD_SETTING(Plugin_UseHleGfx);
     ADD_SETTING(Plugin_UseHleAudio);
     ADD_SETTING(Plugin_EnableAudio);
@@ -467,13 +472,13 @@ CJniBridegSettings::~CJniBridegSettings()
     m_RefCount -= 1;
     if (m_RefCount == 0)
     {
-        g_Settings->UnregisterChangeCB(GameRunning_CPU_Running,NULL,RefreshSettings);
+        g_Settings->UnregisterChangeCB(GameRunning_CPU_Running, NULL, RefreshSettings);
     }
 }
 
 void CJniBridegSettings::RefreshSettings(void *)
 {
-    m_bCPURunning  = g_Settings->LoadBool(GameRunning_CPU_Running);
+    m_bCPURunning = g_Settings->LoadBool(GameRunning_CPU_Running);
 }
 
 SettingID CJniBridegSettings::TranslateSettingID(const char * SettingName)
