@@ -287,22 +287,24 @@ void CX86RegInfo::FixRoundModel(FPU_ROUND RoundMethod)
     m_Assembler.fpuStoreControl(&m_fpuControl, "m_fpuControl");
     asmjit::x86::Gp reg = Map_TempReg(x86Reg_Unknown, -1, false, false);
     m_Assembler.MoveVariableToX86reg(reg, &m_fpuControl, "m_fpuControl");
-    m_Assembler.and_(reg, 0xF3FF);
+    m_Assembler.and_(reg, 0xF0FF);
+    uint16_t Precision = 0x200;
 
     if (RoundMethod == RoundDefault)
     {
         asmjit::x86::Gp RoundReg = Map_TempReg(x86Reg_Unknown, -1, false, false);
         m_Assembler.OrVariableToX86Reg(reg, &CX86RecompilerOps::m_RoundingModeValue, "m_RoundingModeValue");
+        m_Assembler.or_(reg, Precision);
         SetX86Protected(GetIndexFromX86Reg(RoundReg), false);
     }
     else
     {
         switch (RoundMethod)
         {
-        case RoundTruncate: m_Assembler.or_(reg, 0x0C00); break;
-        case RoundNearest: m_Assembler.or_(reg, 0x0000); break;
-        case RoundDown: m_Assembler.or_(reg, 0x0400); break;
-        case RoundUp: m_Assembler.or_(reg, 0x0800); break;
+        case RoundTruncate: m_Assembler.or_(reg, 0x0C00 | Precision); break;
+        case RoundNearest: m_Assembler.or_(reg, 0x0000 | Precision); break;
+        case RoundDown: m_Assembler.or_(reg, 0x0400 | Precision); break;
+        case RoundUp: m_Assembler.or_(reg, 0x0800 | Precision); break;
         default:
             g_Notify->DisplayError("Unknown rounding model");
         }
@@ -1215,7 +1217,32 @@ asmjit::x86::Gp CX86RegInfo::Map_TempReg(asmjit::x86::Gp Reg, int32_t MipsReg, b
     }
     else if (GetX86Mapped(GetIndexFromX86Reg(Reg)) == Stack_Mapped)
     {
+        if (GetX86Protected(GetIndexFromX86Reg(Reg)))
+        {
+            WriteTrace(TraceRegisterCache, TraceError, "Register is protected");
+            g_Notify->BreakPoint(__FILE__, __LINE__);
+            return x86Reg_Unknown;
+        }
         UnMap_X86reg(Reg);
+    }
+    else if (GetX86Mapped(GetIndexFromX86Reg(Reg)) == NotMapped)
+    {
+        if (GetX86Protected(GetIndexFromX86Reg(Reg)))
+        {
+            WriteTrace(TraceRegisterCache, TraceError, "Register is protected");
+            g_Notify->BreakPoint(__FILE__, __LINE__);
+            return x86Reg_Unknown;
+        }
+    }
+    else if (GetX86Mapped(GetIndexFromX86Reg(Reg)) == Temp_Mapped)
+    {
+        //Already mapped as temporary register
+    }
+    else
+    {
+        WriteTrace(TraceRegisterCache, TraceError, "Failed to map temp reg to %s", CX86Ops::x86_Name(Reg));
+        g_Notify->BreakPoint(__FILE__, __LINE__);
+        return x86Reg_Unknown;
     }
     m_CodeBlock.Log("    regcache: allocate %s as temp storage", CX86Ops::x86_Name(Reg));
 
@@ -1782,6 +1809,7 @@ bool CX86RegInfo::UnMap_X86reg(const asmjit::x86::Gp & Reg)
         {
             m_CodeBlock.Log("    regcache: unallocate %s from temp storage", CX86Ops::x86_Name(Reg));
             SetX86Mapped(RegIndex, NotMapped);
+            SetX86Protected(RegIndex, false);
             return true;
         }
     }
@@ -1790,6 +1818,7 @@ bool CX86RegInfo::UnMap_X86reg(const asmjit::x86::Gp & Reg)
         m_CodeBlock.Log("    regcache: unallocate %s from memory stack", CX86Ops::x86_Name(Reg));
         m_Assembler.MoveX86regToVariable(&(g_Recompiler->MemoryStackPos()), "MemoryStack", Reg);
         SetX86Mapped(RegIndex, NotMapped);
+        SetX86Protected(RegIndex, false);
         return true;
     }
     else if (GetX86Mapped(RegIndex) == CX86RegInfo::FPStatusReg_Mapped)
@@ -1797,6 +1826,7 @@ bool CX86RegInfo::UnMap_X86reg(const asmjit::x86::Gp & Reg)
         m_CodeBlock.Log("    regcache: unallocate %s from FP Status Reg", CX86Ops::x86_Name(Reg));
         m_Assembler.MoveX86regToVariable(&g_Reg->m_FPCR[31], "FPCR[31]", Reg);
         SetX86Mapped(RegIndex, NotMapped);
+        SetX86Protected(RegIndex, false);
         return true;
     }
     else
