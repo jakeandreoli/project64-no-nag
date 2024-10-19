@@ -1,5 +1,4 @@
 #include "RSPInfo.h"
-#include <Project64-rsp-core/Hle/hle.h>
 #include <Project64-rsp-core/Recompiler/RspProfiling.h>
 #include <Project64-rsp-core/Recompiler/RspRecompilerCPU.h>
 #include <Project64-rsp-core/Settings/RspSettings.h>
@@ -8,6 +7,7 @@
 #include <Project64-rsp-core/cpu/RSPRegisters.h>
 #include <Project64-rsp-core/cpu/RspLog.h>
 #include <Project64-rsp-core/cpu/RspMemory.h>
+#include <Project64-rsp-core/cpu/RspSystem.h>
 #include <Settings/Settings.h>
 
 #if defined(_MSC_VER)
@@ -16,7 +16,6 @@
 
 RSP_INFO RSPInfo;
 uint32_t RdramSize = 0;
-CHle * g_hle = nullptr;
 
 void ClearAllx86Code(void);
 
@@ -88,11 +87,6 @@ void DetectCpuSpecs(void)
 void RspPluginLoaded(void)
 {
     BreakOnStart = false;
-#if defined(_M_IX86) && defined(_MSC_VER)
-    g_CPUCore = RecompilerCPU;
-#else
-    g_CPUCore = InterpreterCPU;
-#endif
     LogRDP = false;
     LogX86Code = false;
     Profiling = false;
@@ -104,14 +98,13 @@ void RspPluginLoaded(void)
     Compiler.bDest = true;
     Compiler.bAlignVector = false;
     Compiler.bFlags = true;
-    Compiler.bReOrdering = true;
-    Compiler.bSections = true;
+    Compiler.bReOrdering = false;
+    Compiler.bSections = false;
     Compiler.bAccum = true;
     Compiler.bGPRConstants = true;
     DetectCpuSpecs();
 
-    InitializeRspSetting();
-    SetCPU(g_CPUCore);
+    CRSPSettings::InitializeRspSetting();
 }
 
 void InitilizeRSP(RSP_INFO & Rsp_Info)
@@ -122,22 +115,18 @@ void InitilizeRSP(RSP_INFO & Rsp_Info)
     GraphicsHle = Set_GraphicsHle != 0 ? GetSystemSetting(Set_GraphicsHle) != 0 : true;
 
     AllocateMemory();
-    InitilizeRSPRegisters();
+    RSPSystem.Reset(Rsp_Info);
     Build_RSP();
 #ifdef GenerateLog
     Start_Log();
 #endif
-
-    if (g_hle != nullptr)
-    {
-        delete g_hle;
-        g_hle = nullptr;
-    }
 }
 
 void RspRomOpened(void)
 {
+    CRSPSettings::SetRomOpen(true);
     ClearAllx86Code();
+
     JumpTableSize = GetSetting(Set_JumpTableSize);
     Mfc0Count = GetSetting(Set_Mfc0Count);
     SemaphoreExit = GetSetting(Set_SemaphoreExit);
@@ -146,19 +135,19 @@ void RspRomOpened(void)
     {
         RdramSize = 0x00400000;
     }
-    g_RSPRegisterHandler.reset(new RSPRegisterHandlerPlugin(RSPInfo, RdramSize));
 }
 
 void RspRomClosed(void)
 {
+    CRSPSettings::SetRomOpen(false);
     if (Profiling)
     {
         StopTimer();
         GenerateTimerResults();
     }
-    g_RSPRegisterHandler.reset(nullptr);
+    RSPSystem.RomClosed();
     ClearAllx86Code();
-    StopRDPLog();
+    RDPLog.StopLog();
     StopCPULog();
 
 #ifdef GenerateLog
@@ -169,9 +158,4 @@ void RspRomClosed(void)
 void FreeRSP(void)
 {
     FreeMemory();
-    if (g_hle != nullptr)
-    {
-        delete g_hle;
-        g_hle = nullptr;
-    }
 }

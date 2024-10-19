@@ -34,8 +34,7 @@
   <PropertyGroup>
     <TargetName>Project64-RSP</TargetName>
     <TargetName Condition="'$(Configuration)'=='Debug'">Project64-RSP_d</TargetName>
-    <OutDir>$(SolutionDir)Plugin\RSP\</OutDir>
-    <OutDir Condition="'$(Platform)'=='x64'">$(SolutionDir)Plugin64\RSP\</OutDir>
+    <OutDir>$(SolutionDir)Plugin\$(Platform)\RSP\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -58,6 +57,9 @@
     <ClInclude Include="Rsp.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\3rdParty\zlib\zlib.vcxproj">
+      <Project>{731bd205-2826-4631-b7af-117658e88dbc}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\Common\Common.vcxproj">
       <Project>{b4a4b994-9111-42b1-93c2-6f1ca8bc4421}</Project>
     </ProjectReference>

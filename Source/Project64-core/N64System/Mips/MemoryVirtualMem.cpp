@@ -2,7 +2,6 @@
 
 #include <Common\MemoryManagement.h>
 #include <Project64-core\Debugger.h>
-#include <Project64-core\ExceptionHandler.h>
 #include <Project64-core\N64System\Mips\Disk.h>
 #include <Project64-core\N64System\Mips\MemoryVirtualMem.h>
 #include <Project64-core\N64System\N64Rom.h>
@@ -10,8 +9,6 @@
 #include <Project64-core\N64System\SystemGlobals.h>
 #include <stdio.h>
 
-uint8_t * CMipsMemoryVM::m_Reserve1 = nullptr;
-uint8_t * CMipsMemoryVM::m_Reserve2 = nullptr;
 uint32_t CMipsMemoryVM::RegModValue;
 
 #pragma warning(disable : 4355) // Disable 'this' : used in base member initializer list
@@ -110,54 +107,16 @@ void CMipsMemoryVM::Reset(bool /*EraseMemory*/)
     }
 }
 
-void CMipsMemoryVM::ReserveMemory()
-{
-#if defined(__i386__) || defined(_M_IX86)
-    m_Reserve1 = (uint8_t *)AllocateAddressSpace(0x20000000, (void *)g_Settings->LoadDword(Setting_FixedRdramAddress));
-#else
-    m_Reserve1 = (uint8_t *)AllocateAddressSpace(0x20000000);
-#endif
-    m_Reserve2 = (uint8_t *)AllocateAddressSpace(0x04002000);
-}
-
-void CMipsMemoryVM::FreeReservedMemory()
-{
-    if (m_Reserve1)
-    {
-        FreeAddressSpace(m_Reserve1, 0x20000000);
-        m_Reserve1 = nullptr;
-    }
-    if (m_Reserve2)
-    {
-        FreeAddressSpace(m_Reserve2, 0x20000000);
-        m_Reserve2 = nullptr;
-    }
-}
-
-bool CMipsMemoryVM::Initialize(bool SyncSystem)
+bool CMipsMemoryVM::Initialize(void)
 {
     if (m_RDRAM != nullptr)
     {
         return true;
     }
-
-    if (!SyncSystem && m_RDRAM == nullptr && m_Reserve1 != nullptr)
-    {
-        m_RDRAM = m_Reserve1;
-        m_Reserve1 = nullptr;
-    }
-    if (SyncSystem && m_RDRAM == nullptr && m_Reserve2 != nullptr)
-    {
-        m_RDRAM = m_Reserve2;
-        m_Reserve2 = nullptr;
-    }
+    m_RDRAM = (uint8_t *)AllocateAddressSpace(0x02000000, (void *)g_Settings->LoadDword(Setting_FixedRdramAddress));
     if (m_RDRAM == nullptr)
     {
-        m_RDRAM = (uint8_t *)AllocateAddressSpace(0x20000000);
-    }
-    if (m_RDRAM == nullptr)
-    {
-        WriteTrace(TraceN64System, TraceError, "Failed to reserve RDRAM (Size: 0x%X)", 0x20000000);
+        WriteTrace(TraceN64System, TraceError, "Failed to reserve RDRAM (Size: 0x%X)", 0x02000000);
         FreeMemory();
         return false;
     }
@@ -213,25 +172,8 @@ void CMipsMemoryVM::FreeMemory()
 {
     if (m_RDRAM)
     {
-        if (DecommitMemory(m_RDRAM, 0x20000000))
-        {
-            if (m_Reserve1 == nullptr)
-            {
-                m_Reserve1 = m_RDRAM;
-            }
-            else if (m_Reserve2 == nullptr)
-            {
-                m_Reserve2 = m_RDRAM;
-            }
-            else
-            {
-                FreeAddressSpace(m_RDRAM, 0x20000000);
-            }
-        }
-        else
-        {
-            FreeAddressSpace(m_RDRAM, 0x20000000);
-        }
+        DecommitMemory(m_RDRAM, 0x02000000);
+        FreeAddressSpace(m_RDRAM, 0x02000000);
         m_RDRAM = nullptr;
     }
     if (m_TLB_ReadMap)
@@ -876,7 +818,6 @@ bool CMipsMemoryVM::SB_PhysicalAddress(uint32_t PAddr, uint32_t Value)
         if (PAddr < RdramSize())
         {
             g_Recompiler->ClearRecompCode_Phys(PAddr & ~0xFFF, 0xFFC, CRecompiler::Remove_ProtectedMem);
-            ::ProtectMemory(m_RDRAM + (PAddr & ~0xFFF), 0xFFC, MEM_READWRITE);
             *(uint8_t *)(m_RDRAM + (PAddr ^ 3)) = (uint8_t)Value;
         }
         break;
@@ -909,18 +850,11 @@ bool CMipsMemoryVM::SH_PhysicalAddress(uint32_t PAddr, uint32_t Value)
     case 0x00700000:
         if (PAddr < RdramSize())
         {
-            if (CGameSettings::bSMM_Protect() || CGameSettings::bSMM_StoreInstruc())
+            if (CGameSettings::bSMM_StoreInstruc())
             {
                 g_Recompiler->ClearRecompCode_Phys(PAddr & ~0xFFF, 0x1000, CRecompiler::Remove_ProtectedMem);
-                if (CGameSettings::bSMM_Protect())
-                {
-                    ::ProtectMemory(m_RDRAM + (PAddr & ~0xFFF), 0xFFC, MEM_READWRITE);
-                }
-                if (CGameSettings::bSMM_StoreInstruc())
-                {
-                    m_TLB_WriteMap[(0x80000000 + PAddr) >> 12] = PAddr - (0x80000000 + PAddr);
-                    m_TLB_WriteMap[(0xA0000000 + PAddr) >> 12] = PAddr - (0xA0000000 + PAddr);
-                }
+                m_TLB_WriteMap[(0x80000000 + PAddr) >> 12] = PAddr - (0x80000000 + PAddr);
+                m_TLB_WriteMap[(0xA0000000 + PAddr) >> 12] = PAddr - (0xA0000000 + PAddr);
                 *(uint16_t *)(m_RDRAM + (PAddr ^ 2)) = (uint16_t)Value;
             }
         }
@@ -957,18 +891,11 @@ bool CMipsMemoryVM::SW_PhysicalAddress(uint32_t PAddr, uint32_t Value)
     case 0x00800000:
         if (PAddr < RdramSize())
         {
-            if (CGameSettings::bSMM_Protect() || CGameSettings::bSMM_StoreInstruc())
+            if (CGameSettings::bSMM_StoreInstruc())
             {
                 g_Recompiler->ClearRecompCode_Phys(PAddr & ~0xFFF, 0x1000, CRecompiler::Remove_ProtectedMem);
-                if (CGameSettings::bSMM_Protect())
-                {
-                    ::ProtectMemory(m_RDRAM + (PAddr & ~0xFFF), 0xFFC, MEM_READWRITE);
-                }
-                if (CGameSettings::bSMM_StoreInstruc())
-                {
-                    m_TLB_WriteMap[(0x80000000 + PAddr) >> 12] = PAddr - (0x80000000 + PAddr);
-                    m_TLB_WriteMap[(0xA0000000 + PAddr) >> 12] = PAddr - (0xA0000000 + PAddr);
-                }
+                m_TLB_WriteMap[(0x80000000 + PAddr) >> 12] = PAddr - (0x80000000 + PAddr);
+                m_TLB_WriteMap[(0xA0000000 + PAddr) >> 12] = PAddr - (0xA0000000 + PAddr);
                 *(uint32_t *)(m_RDRAM + PAddr) = Value;
             }
         }
@@ -1020,7 +947,6 @@ bool CMipsMemoryVM::SD_PhysicalAddress(uint32_t PAddr, uint64_t Value)
         if (PAddr < RdramSize())
         {
             g_Recompiler->ClearRecompCode_Phys(PAddr & ~0xFFF, 0xFFC, CRecompiler::Remove_ProtectedMem);
-            ::ProtectMemory(m_RDRAM + (PAddr & ~0xFFF), 0xFFC, MEM_READWRITE);
             *(uint64_t *)(m_RDRAM + PAddr) = Value;
         }
         break;
@@ -1052,56 +978,6 @@ void CMipsMemoryVM::ClearMemoryWriteMap(uint32_t VAddr, uint32_t Length)
         m_MemoryWriteMap[(i + 0x80000000) >> 12] = (size_t)-1;
         m_MemoryWriteMap[(i + 0xA0000000) >> 12] = (size_t)-1;
     }
-}
-
-void CMipsMemoryVM::ProtectMemory(uint32_t StartVaddr, uint32_t EndVaddr)
-{
-    WriteTrace(TraceProtectedMem, TraceDebug, "StartVaddr: %08X EndVaddr: %08X", StartVaddr, EndVaddr);
-
-    if (!ValidVaddr(StartVaddr) || !ValidVaddr(EndVaddr) || EndVaddr < StartVaddr)
-    {
-        return;
-    }
-
-    int32_t Length = ((EndVaddr + 3) - StartVaddr) & ~3;
-    if (Length < 0)
-    {
-        g_Notify->BreakPoint(__FILE__, __LINE__);
-        return;
-    }
-    uint8_t * MemLoc = MemoryPtr(StartVaddr, Length, true);
-    if (MemLoc == nullptr)
-    {
-        g_Notify->BreakPoint(__FILE__, __LINE__);
-        return;
-    }
-    WriteTrace(TraceProtectedMem, TraceDebug, "Length: 0x%X", Length);
-    ::ProtectMemory(MemLoc, Length, MEM_READONLY);
-}
-
-void CMipsMemoryVM::UnProtectMemory(uint32_t StartVaddr, uint32_t EndVaddr)
-{
-    WriteTrace(TraceProtectedMem, TraceDebug, "StartVaddr: %08X EndVaddr: %08X", StartVaddr, EndVaddr);
-    if (!ValidVaddr(StartVaddr) || !ValidVaddr(EndVaddr) || EndVaddr < StartVaddr)
-    {
-        return;
-    }
-
-    int32_t Length = ((EndVaddr + 3) - StartVaddr) & ~3;
-    if (Length < 0)
-    {
-        g_Notify->BreakPoint(__FILE__, __LINE__);
-        return;
-    }
-    uint8_t * MemLoc = MemoryPtr(StartVaddr, Length, true);
-    if (MemLoc == nullptr)
-    {
-        g_Notify->BreakPoint(__FILE__, __LINE__);
-        return;
-    }
-
-    WriteTrace(TraceProtectedMem, TraceDebug, "Length: 0x%X", Length);
-    ::ProtectMemory(MemLoc, Length, MEM_READWRITE);
 }
 
 const char * CMipsMemoryVM::LabelName(uint32_t Address) const

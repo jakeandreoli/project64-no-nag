@@ -84,7 +84,6 @@ CJniBridegSettings::CJniBridegSettings()
     ADD_SETTING(Default_SyncViaAudio);
     ADD_SETTING(Default_FixedAudio);
     ADD_SETTING(Default_RandomizeSIPIInterrupts);
-    ADD_SETTING(Default_SMM_Protect_Memory);
     ADD_SETTING(Default_DiskSeekTiming);
 
     // RDB settings
@@ -114,7 +113,6 @@ CJniBridegSettings::CJniBridegSettings()
     ADD_SETTING(Rdb_SMM_Cache);
     ADD_SETTING(Rdb_SMM_PIDMA);
     ADD_SETTING(Rdb_SMM_TLB);
-    ADD_SETTING(Rdb_SMM_Protect);
     ADD_SETTING(Rdb_SMM_ValidFunc);
     ADD_SETTING(Rdb_ViRefreshRate);
     ADD_SETTING(Rdb_AiCountPerBytes);
@@ -148,7 +146,6 @@ CJniBridegSettings::CJniBridegSettings()
     ADD_SETTING(Game_SyncViaAudio);
     ADD_SETTING(Game_32Bit);
     ADD_SETTING(Game_SMM_Cache);
-    ADD_SETTING(Game_SMM_Protect);
     ADD_SETTING(Game_SMM_ValidFunc);
     ADD_SETTING(Game_SMM_PIDMA);
     ADD_SETTING(Game_SMM_TLB);
@@ -249,7 +246,6 @@ CJniBridegSettings::CJniBridegSettings()
     // Debugger
     ADD_SETTING(Debugger_Enabled);
     ADD_SETTING(Debugger_EndOnPermLoop);
-    ADD_SETTING(Debugger_FpuExceptionInRecompiler);
     ADD_SETTING(Debugger_BreakOnUnhandledMemory);
     ADD_SETTING(Debugger_BreakOnAddressError);
     ADD_SETTING(Debugger_StepOnBreakOpCode);
@@ -294,10 +290,8 @@ CJniBridegSettings::CJniBridegSettings()
     ADD_SETTING(Debugger_TraceRegisterCache);
     ADD_SETTING(Debugger_TraceRecompiler);
     ADD_SETTING(Debugger_TraceTLB);
-    ADD_SETTING(Debugger_TraceProtectedMEM);
     ADD_SETTING(Debugger_TraceUserInterface);
     ADD_SETTING(Debugger_TraceRomList);
-    ADD_SETTING(Debugger_TraceExceptionHandler);
 
     // Plugins
     ADD_SETTING(Plugin_RSP_Current);

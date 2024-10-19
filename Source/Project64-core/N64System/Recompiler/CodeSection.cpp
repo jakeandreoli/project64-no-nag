@@ -1,7 +1,6 @@
 #include "stdafx.h"
 
 #include <Project64-core/Debugger.h>
-#include <Project64-core/ExceptionHandler.h>
 #include <Project64-core/N64System/Mips/MemoryVirtualMem.h>
 #include <Project64-core/N64System/Mips/R4300iInstruction.h>
 #include <Project64-core/N64System/Mips/R4300iOpcode.h>
@@ -64,7 +63,7 @@ void CCodeSection::GenerateSectionLinkage()
         R4300iOpcode JumpOp, DelaySlot;
         if (g_MMU->MemoryValue32(m_RecompilerOps->GetCurrentPC(), JumpOp.Value) &&
             g_MMU->MemoryValue32(m_RecompilerOps->GetCurrentPC() + 4, DelaySlot.Value) &&
-            !R4300iInstruction(m_RecompilerOps->GetCurrentPC(), JumpOp.Value).DelaySlotEffectsCompare(DelaySlot.Value))
+            !R4300iInstruction((int32_t)m_RecompilerOps->GetCurrentPC(), JumpOp.Value).DelaySlotEffectsCompare(DelaySlot.Value))
         {
             m_RecompilerOps->CompileInPermLoop(m_Jump.RegSet, m_RecompilerOps->GetCurrentPC());
         }
@@ -91,7 +90,7 @@ void CCodeSection::GenerateSectionLinkage()
                     JumpInfo[i]->RegSet.SetMipsRegState(31, CRegInfo::STATE_CONST_32_SIGN);
                     JumpInfo[i]->LinkAddress = (uint32_t)-1;
                 }
-                m_RecompilerOps->CompileExit(JumpInfo[i]->JumpPC, JumpInfo[i]->TargetPC, JumpInfo[i]->RegSet, JumpInfo[i]->Reason);
+                m_RecompilerOps->CompileExit((int32_t)JumpInfo[i]->JumpPC, (int32_t)JumpInfo[i]->TargetPC, JumpInfo[i]->RegSet, JumpInfo[i]->Reason);
                 JumpInfo[i]->FallThrough = false;
             }
             else if (TargetSection[i] != nullptr && JumpInfo[i] != nullptr)
@@ -259,7 +258,7 @@ void CCodeSection::GenerateSectionLinkage()
                 JumpInfo[i]->RegSet.SetMipsRegState(31, CRegInfo::STATE_CONST_32_SIGN);
                 JumpInfo[i]->LinkAddress = (uint32_t)-1;
             }
-            m_RecompilerOps->CompileExit(JumpInfo[i]->JumpPC, JumpInfo[i]->TargetPC, JumpInfo[i]->RegSet, JumpInfo[i]->Reason);
+            m_RecompilerOps->CompileExit((int32_t)JumpInfo[i]->JumpPC, (int32_t)JumpInfo[i]->TargetPC, JumpInfo[i]->RegSet, JumpInfo[i]->Reason);
             continue;
         }
         if (JumpInfo[i]->TargetPC != TargetSection[i]->m_EnterPC)
@@ -391,7 +390,7 @@ bool CCodeSection::GenerateNativeCode(uint32_t Test)
 
     uint32_t ContinueSectionPC = m_ContinueSection ? m_ContinueSection->m_EnterPC : (uint32_t)-1;
     const R4300iOpcode & Opcode = m_RecompilerOps->GetOpcode();
-    R4300iInstruction Instruction(m_RecompilerOps->GetCurrentPC(), Opcode.Value);
+    R4300iInstruction Instruction((int32_t)m_RecompilerOps->GetCurrentPC(), Opcode.Value);
     do
     {
         if (m_RecompilerOps->GetCurrentPC() > m_CodeBlock.VAddrLast())
@@ -722,11 +721,11 @@ bool CCodeSection::GenerateNativeCode(uint32_t Test)
             {
                 if (m_DelaySlot)
                 {
-                    m_RecompilerOps->CompileExit(m_RecompilerOps->GetCurrentPC(), m_Jump.TargetPC, m_RecompilerOps->GetRegWorkingSet(), ExitReason_Normal);
+                    m_RecompilerOps->CompileExit((int32_t)m_RecompilerOps->GetCurrentPC(), (int32_t)m_Jump.TargetPC, m_RecompilerOps->GetRegWorkingSet(), ExitReason_Normal);
                 }
                 else
                 {
-                    m_RecompilerOps->CompileExit(m_RecompilerOps->GetCurrentPC(), m_RecompilerOps->GetCurrentPC() + 4, m_RecompilerOps->GetRegWorkingSet(), ExitReason_Normal);
+                    m_RecompilerOps->CompileExit((int32_t)m_RecompilerOps->GetCurrentPC(), (int32_t)(m_RecompilerOps->GetCurrentPC() + 4), m_RecompilerOps->GetRegWorkingSet(), ExitReason_Normal);
                 }
                 m_RecompilerOps->SetNextStepType(PIPELINE_STAGE_END_BLOCK);
             }

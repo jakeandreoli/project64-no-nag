@@ -55,10 +55,7 @@ public:
     CMipsMemoryVM(CN64System & System, bool SavesReadOnly);
     ~CMipsMemoryVM();
 
-    static void ReserveMemory();
-    static void FreeReservedMemory();
-
-    bool Initialize(bool SyncSystem);
+    bool Initialize(void);
     void Reset(bool EraseMemory);
 
     uint8_t *& Rdram()
@@ -110,16 +107,7 @@ public:
 
     int32_t MemoryFilter(uint32_t dwExptCode, void * lpExceptionPointer);
 
-#ifndef _WIN32
-    static bool SetupSegvHandler(void);
-    static void segv_handler(int signal, siginfo_t * siginfo, void * sigcontext);
-#endif
-
     void ClearMemoryWriteMap(uint32_t VAddr, uint32_t Length);
-
-    // Protect the memory from being written to
-    void ProtectMemory(uint32_t StartVaddr, uint32_t EndVaddr);
-    void UnProtectMemory(uint32_t StartVaddr, uint32_t EndVaddr);
 
     // Functions for TLB notification
     void TLB_Mapped(uint32_t VAddr, uint32_t Len, uint32_t PAddr, bool bReadOnly);
@@ -153,6 +141,7 @@ private:
     CMipsMemoryVM(const CMipsMemoryVM &);
     CMipsMemoryVM & operator=(const CMipsMemoryVM &);
 
+    friend class R4300iOp;
 #if defined(__i386__) || defined(_M_IX86)
     friend class CX86RecompilerOps;
 #elif defined(__arm__) || defined(_M_ARM)
@@ -208,7 +197,6 @@ private:
 #endif
     void FreeMemory();
 
-    static uint8_t *m_Reserve1, *m_Reserve2;
     CN64System & m_System;
     CRegisters & m_Reg;
     CTLB & m_TLB;

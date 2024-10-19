@@ -81,9 +81,7 @@ public:
     void AfterCallDirect(void);
 
     void FixRoundModel(FPU_ROUND RoundMethod);
-    void ChangeFPURegFormat(int32_t Reg, FPU_STATE OldFormat, FPU_STATE NewFormat, FPU_ROUND RoundingModel);
     asmjit::x86::Gp FPRValuePointer(int32_t Reg, FPU_STATE Format);
-    void Load_FPR_ToTop(int32_t Reg, int32_t RegToLoad, FPU_STATE Format);
     void PrepareFPTopToBe(int32_t Reg, int32_t RegToLoad, FPU_STATE Format);
     void SetFPTopAs(int32_t Reg);
     bool RegInStack(int32_t Reg, FPU_STATE Format);
@@ -92,6 +90,7 @@ public:
     const asmjit::x86::St & StackPosition(int32_t Reg);
 
     bool IsFPStatusRegMapped();
+    asmjit::x86::Gp GetFPStatusReg() const;
     asmjit::x86::Gp FreeX86Reg();
     asmjit::x86::Gp Free8BitX86Reg();
     void Map_GPR_32bit(int32_t MipsReg, bool SignValue, int32_t MipsRegToLoad);

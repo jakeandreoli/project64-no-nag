@@ -263,7 +263,7 @@ private:
     CTLB & m_TLB;
     CMipsMemoryVM & m_MMU;
     R4300iOpcode m_Opcode;
-    uint32_t & m_PROGRAM_COUNTER;
+    uint64_t & m_PROGRAM_COUNTER;
     MIPS_DWORD * m_GPR;
     MIPS_DWORD * m_FPR;
     uint64_t * m_CP0;
@@ -292,8 +292,10 @@ private:
 
     bool TestCop1UsableException(void);
     bool CheckFPUInput32(const float & Value);
+    bool CheckFPUInputs32(const float & Value, const float & Value2);
     bool CheckFPUInput32Conv(const float & Value);
     bool CheckFPUInput64(const double & Value);
+    bool CheckFPUInputs64(const double & Value, const double & Value2);
     bool CheckFPUInput64Conv(const double & Value);
     bool CheckFPUResult32(float & Result);
     bool CheckFPUResult64(double & Result);

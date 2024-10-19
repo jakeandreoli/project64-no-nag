@@ -41,11 +41,17 @@ CRomList::CRomList() :
     WriteTrace(TraceRomList, TraceVerbose, "Start");
     if (g_Settings)
     {
-        m_NotesIniFile = new CIniFile(g_Settings->LoadStringVal(SupportFile_Notes).c_str());
-        m_ExtIniFile = new CIniFile(g_Settings->LoadStringVal(SupportFile_ExtInfo).c_str());
-        m_RomIniFile = new CIniFile(g_Settings->LoadStringVal(SupportFile_RomDatabase).c_str());
+        CPath ModuleDir(CPath::MODULE_DIRECTORY);
+        CPath NotesFile = CPath(g_Settings->LoadStringVal(SupportFile_Notes)).NormalizePath(ModuleDir);
+        CPath ExtInfo = CPath(g_Settings->LoadStringVal(SupportFile_ExtInfo)).NormalizePath(ModuleDir);
+        CPath RomDatabase = CPath(g_Settings->LoadStringVal(SupportFile_RomDatabase)).NormalizePath(ModuleDir);
+        CPath ZipCache = CPath(g_Settings->LoadStringVal(RomList_7zipCache)).NormalizePath(ModuleDir);
+
+        m_NotesIniFile = new CIniFile(NotesFile);
+        m_ExtIniFile = new CIniFile(ExtInfo);
+        m_RomIniFile = new CIniFile(RomDatabase);
 #ifdef _WIN32
-        m_ZipIniFile = new CIniFile(g_Settings->LoadStringVal(RomList_7zipCache).c_str());
+        m_ZipIniFile = new CIniFile(ZipCache);
 #endif
         g_Settings->RegisterChangeCB(RomList_GameDir, this, (CSettings::SettingChangedFunc)RefreshSettings);
     }
@@ -106,7 +112,7 @@ void CRomList::RefreshRomListThread(void)
 {
     WriteTrace(TraceRomList, TraceVerbose, "Start");
     // Delete cache
-    CPath(g_Settings->LoadStringVal(RomList_RomListCache)).Delete();
+    CPath(g_Settings->LoadStringVal(RomList_RomListCache)).NormalizePath(CPath::MODULE_DIRECTORY).Delete();
     WriteTrace(TraceRomList, TraceVerbose, "Cache deleted");
 
     // Clear all current items
@@ -683,7 +689,7 @@ void CRomList::ByteSwapRomData(uint8_t * Data, int32_t DataLen)
 void CRomList::LoadRomList(void)
 {
     WriteTrace(TraceRomList, TraceVerbose, "Start");
-    CPath FileName(g_Settings->LoadStringVal(RomList_RomListCache));
+    CPath FileName = CPath(g_Settings->LoadStringVal(RomList_RomListCache)).NormalizePath(CPath::MODULE_DIRECTORY);
     CFile file(FileName, CFileBase::modeRead | CFileBase::modeNoTruncate);
 
     if (!file.IsOpen())
@@ -735,7 +741,7 @@ void CRomList::SaveRomList(strlist & FileList)
 {
     MD5 ListHash = RomListHash(FileList);
 
-    CPath FileName(g_Settings->LoadStringVal(RomList_RomListCache));
+    CPath FileName = CPath(g_Settings->LoadStringVal(RomList_RomListCache)).NormalizePath(CPath::MODULE_DIRECTORY);
     CFile file(FileName, CFileBase::modeWrite | CFileBase::modeCreate);
     file.Write(ListHash.raw_digest(), 16);
 

@@ -8,6 +8,8 @@
 #endif
 
 class CMipsMemoryVM;
+class CRecompiler;
+class CRecompMemory;
 
 class CCodeBlock :
     public asmjit::ErrorHandler
@@ -17,7 +19,7 @@ public:
     ~CCodeBlock();
 
     bool Compile();
-    uint32_t Finilize(uint8_t * CompiledLocation);
+    uint32_t Finilize(CRecompMemory & RecompMem);
 
     asmjit::CodeHolder & CodeHolder(void)
     {
@@ -119,6 +121,7 @@ private:
     typedef std::map<uint32_t, CCodeSection *> SectionMap;
     typedef std::list<CCodeSection *> SectionList;
 
+    CRecompiler & m_Recompiler;
     CMipsMemoryVM & m_MMU;
     CRegisters & m_Reg;
     SectionMap m_SectionMap;

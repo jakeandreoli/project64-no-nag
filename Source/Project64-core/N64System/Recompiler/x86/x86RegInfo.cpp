@@ -315,35 +315,6 @@ void CX86RegInfo::FixRoundModel(FPU_ROUND RoundMethod)
     SetRoundingModel(RoundMethod);
 }
 
-void CX86RegInfo::ChangeFPURegFormat(int32_t Reg, FPU_STATE OldFormat, FPU_STATE NewFormat, FPU_ROUND RoundingModel)
-{
-    for (uint32_t i = 0; i < x86RegFpuIndex_Size; i++)
-    {
-        if (m_x86fpu_MappedTo[i] != Reg)
-        {
-            continue;
-        }
-        if (m_x86fpu_State[i] != OldFormat || m_x86fpu_StateChanged[i])
-        {
-            UnMap_FPR(Reg, true);
-            Load_FPR_ToTop(Reg, Reg, OldFormat);
-        }
-        else
-        {
-            m_CodeBlock.Log("    regcache: Changed format of ST(%d) from %s to %s", (i - StackTopPos() + 8) & 7, Format_Name[OldFormat], Format_Name[NewFormat]);
-        }
-        FpuRoundingModel(i) = RoundingModel;
-        m_x86fpu_State[i] = NewFormat;
-        m_x86fpu_StateChanged[i] = true;
-        return;
-    }
-
-    if (HaveDebugger())
-    {
-        g_Notify->DisplayError("ChangeFormat: Register not on stack!");
-    }
-}
-
 asmjit::x86::Gp CX86RegInfo::FPRValuePointer(int32_t Reg, FPU_STATE Format)
 {
     if (Reg < 0)
@@ -388,193 +359,6 @@ asmjit::x86::Gp CX86RegInfo::FPRValuePointer(int32_t Reg, FPU_STATE Format)
     return TempReg;
 }
 
-void CX86RegInfo::Load_FPR_ToTop(int32_t Reg, int32_t RegToLoad, FPU_STATE Format)
-{
-    if (GetRoundingModel() != RoundDefault)
-    {
-        FixRoundModel(RoundDefault);
-    }
-    m_CodeBlock.Log("CurrentRoundingModel: %s  FpuRoundingModel(StackTopPos()): %s", RoundingModelName(GetRoundingModel()), RoundingModelName(FpuRoundingModel(StackTopPos())));
-
-    if (RegToLoad < 0)
-    {
-        g_Notify->DisplayError("Load_FPR_ToTop\nRegToLoad < 0 ???");
-        return;
-    }
-    if (Reg < 0)
-    {
-        g_Notify->DisplayError("Load_FPR_ToTop\nReg < 0 ???");
-        return;
-    }
-
-    if (Format == FPU_Double || Format == FPU_Qword)
-    {
-        UnMap_FPR(Reg + 1, true);
-        UnMap_FPR(RegToLoad + 1, true);
-    }
-    else
-    {
-        if ((Reg & 1) != 0)
-        {
-            for (int32_t i = 0; i < x86RegFpuIndex_Size; i++)
-            {
-                if (m_x86fpu_MappedTo[i] != (Reg - 1))
-                {
-                    continue;
-                }
-                if (m_x86fpu_State[i] == FPU_Double || m_x86fpu_State[i] == FPU_Qword)
-                {
-                    UnMap_FPR(Reg, true);
-                }
-                break;
-            }
-        }
-        if ((RegToLoad & 1) != 0)
-        {
-            for (int32_t i = 0; i < x86RegFpuIndex_Size; i++)
-            {
-                if (m_x86fpu_MappedTo[i] != (RegToLoad - 1))
-                {
-                    continue;
-                }
-                if (m_x86fpu_State[i] == FPU_Double || m_x86fpu_State[i] == FPU_Qword)
-                {
-                    UnMap_FPR(RegToLoad, true);
-                }
-                break;
-            }
-        }
-    }
-
-    if (Reg == RegToLoad)
-    {
-        // If different format then unmap original register from stack
-        for (int32_t i = 0; i < x86RegFpuIndex_Size; i++)
-        {
-            if (m_x86fpu_MappedTo[i] != Reg)
-            {
-                continue;
-            }
-            if (m_x86fpu_State[i] != Format)
-            {
-                UnMap_FPR(Reg, true);
-            }
-            break;
-        }
-    }
-    else
-    {
-        // If different format then unmap original register from stack
-        for (int32_t i = 0; i < x86RegFpuIndex_Size; i++)
-        {
-            if (m_x86fpu_MappedTo[i] != Reg)
-            {
-                continue;
-            }
-            UnMap_FPR(Reg, m_x86fpu_State[i] != Format);
-            break;
-        }
-    }
-
-    if (RegInStack(RegToLoad, Format))
-    {
-        if (Reg != RegToLoad)
-        {
-            if (m_x86fpu_MappedTo[(StackTopPos() - 1) & 7] != RegToLoad)
-            {
-                UnMap_FPR(m_x86fpu_MappedTo[(StackTopPos() - 1) & 7], true);
-                m_CodeBlock.Log("    regcache: allocate ST(0) to %s", CRegName::FPR[Reg]);
-                m_Assembler.fpuLoadReg(StackTopPos(), StackPosition(RegToLoad));
-                FpuRoundingModel(StackTopPos()) = RoundDefault;
-                m_x86fpu_MappedTo[StackTopPos()] = Reg;
-                m_x86fpu_State[StackTopPos()] = Format;
-                m_x86fpu_StateChanged[StackTopPos()] = false;
-            }
-            else
-            {
-                UnMap_FPR(m_x86fpu_MappedTo[(StackTopPos() - 1) & 7], true);
-                Load_FPR_ToTop(Reg, RegToLoad, Format);
-            }
-        }
-        else
-        {
-            int32_t RegPos = -1;
-            for (uint32_t z = 0; z < x86RegFpuIndex_Size; z++)
-            {
-                if (m_x86fpu_MappedTo[z] != Reg)
-                {
-                    continue;
-                }
-                RegPos = z;
-                break;
-            }
-
-            if (RegPos == StackTopPos())
-            {
-                return;
-            }
-            asmjit::x86::St StackPos = StackPosition(Reg);
-
-            FpuRoundingModel(RegPos) = FpuRoundingModel(StackTopPos());
-            m_x86fpu_MappedTo[RegPos] = m_x86fpu_MappedTo[StackTopPos()];
-            m_x86fpu_State[RegPos] = m_x86fpu_State[StackTopPos()];
-            m_x86fpu_StateChanged[RegPos] = m_x86fpu_StateChanged[StackTopPos()];
-            //m_CodeBlock.Log("    regcache: allocate ST(%d) to %s", StackPos, CRegName::FPR[m_x86fpu_MappedTo[RegPos]]);
-            m_CodeBlock.Log("    regcache: allocate ST(0) to %s", CRegName::FPR[Reg]);
-
-            m_Assembler.fxch(StackPos);
-
-            FpuRoundingModel(StackTopPos()) = RoundDefault;
-            m_x86fpu_MappedTo[StackTopPos()] = Reg;
-            m_x86fpu_State[StackTopPos()] = Format;
-            m_x86fpu_StateChanged[StackTopPos()] = false;
-        }
-    }
-    else
-    {
-        UnMap_FPR(m_x86fpu_MappedTo[(StackTopPos() - 1) & 7], true);
-        for (int32_t i = 0; i < x86RegFpuIndex_Size; i++)
-        {
-            if (m_x86fpu_MappedTo[i] == RegToLoad)
-            {
-                UnMap_FPR(RegToLoad, true);
-                i = 8;
-            }
-        }
-        m_CodeBlock.Log("    regcache: allocate ST(0) to %s", CRegName::FPR[Reg]);
-        asmjit::x86::Gp TempReg = Map_TempReg(x86Reg_Unknown, -1, false, false);
-        switch (Format)
-        {
-        case FPU_Dword:
-            m_Assembler.MoveVariableToX86reg(TempReg, &g_Reg->m_FPR_S[RegToLoad], stdstr_f("m_FPR_S[%d]", RegToLoad).c_str());
-            m_Assembler.fpuLoadIntegerDwordFromX86Reg(StackTopPos(), TempReg);
-            break;
-        case FPU_Qword:
-            m_Assembler.MoveVariableToX86reg(TempReg, &g_Reg->m_FPR_D[RegToLoad], stdstr_f("m_FPR_D[%d]", RegToLoad).c_str());
-            m_Assembler.fpuLoadIntegerQwordFromX86Reg(StackTopPos(), TempReg);
-            break;
-        case FPU_Float:
-            m_Assembler.MoveVariableToX86reg(TempReg, &g_Reg->m_FPR_S[RegToLoad], stdstr_f("m_FPR_S[%d]", RegToLoad).c_str());
-            m_Assembler.fpuLoadDwordFromX86Reg(StackTopPos(), TempReg);
-            break;
-        case FPU_Double:
-            m_Assembler.MoveVariableToX86reg(TempReg, &g_Reg->m_FPR_D[RegToLoad], stdstr_f("m_FPR_D[%d]", RegToLoad).c_str());
-            m_Assembler.fpuLoadQwordFromX86Reg(StackTopPos(), TempReg);
-            break;
-        default:
-            if (HaveDebugger())
-            {
-                g_Notify->DisplayError(stdstr_f("Load_FPR_ToTop\nUnkown format to load %d", Format).c_str());
-            }
-        }
-        SetX86Protected(GetIndexFromX86Reg(TempReg), false);
-        FpuRoundingModel(StackTopPos()) = RoundDefault;
-        m_x86fpu_MappedTo[StackTopPos()] = Reg;
-        m_x86fpu_State[StackTopPos()] = Format;
-        m_x86fpu_StateChanged[StackTopPos()] = false;
-    }
-}
-
 const asmjit::x86::St & CX86RegInfo::StackPosition(int32_t Reg)
 {
     static const asmjit::x86::St StRegs[] = {
@@ -608,6 +392,18 @@ bool CX86RegInfo::IsFPStatusRegMapped()
         }
     }
     return false;
+}
+
+asmjit::x86::Gp CX86RegInfo::GetFPStatusReg() const
+{
+    for (int32_t i = 0, n = x86RegIndex_Size; i < n; i++)
+    {
+        if (GetX86Mapped((x86RegIndex)i) == FPStatusReg_Mapped)
+        {
+            return GetX86RegFromIndex((x86RegIndex)i);
+        }
+    }
+    return x86Reg_Unknown;
 }
 
 asmjit::x86::Gp CX86RegInfo::FreeX86Reg()
@@ -1215,7 +1011,8 @@ asmjit::x86::Gp CX86RegInfo::Map_TempReg(asmjit::x86::Gp Reg, int32_t MipsReg, b
             }
         }
     }
-    else if (GetX86Mapped(GetIndexFromX86Reg(Reg)) == Stack_Mapped)
+    else if (GetX86Mapped(GetIndexFromX86Reg(Reg)) == Stack_Mapped ||
+             GetX86Mapped(GetIndexFromX86Reg(Reg)) == FPStatusReg_Mapped)
     {
         if (GetX86Protected(GetIndexFromX86Reg(Reg)))
         {
@@ -1223,7 +1020,10 @@ asmjit::x86::Gp CX86RegInfo::Map_TempReg(asmjit::x86::Gp Reg, int32_t MipsReg, b
             g_Notify->BreakPoint(__FILE__, __LINE__);
             return x86Reg_Unknown;
         }
-        UnMap_X86reg(Reg);
+        if (!UnMap_X86reg(Reg))
+        {
+            g_Notify->BreakPoint(__FILE__, __LINE__);
+        }
     }
     else if (GetX86Mapped(GetIndexFromX86Reg(Reg)) == NotMapped)
     {
@@ -1468,7 +1268,7 @@ void CX86RegInfo::PrepareFPTopToBe(int32_t Reg, int32_t RegToLoad, FPU_STATE For
         default:
             if (HaveDebugger())
             {
-                g_Notify->DisplayError(stdstr_f("Load_FPR_ToTop\nUnkown format to load %d", Format).c_str());
+                g_Notify->DisplayError(stdstr_f("PrepareFPTopToBe\nUnkown format to load %d", Format).c_str());
             }
         }
         SetX86Protected(GetIndexFromX86Reg(TempReg), false);
@@ -1624,11 +1424,16 @@ void CX86RegInfo::UnMap_FPStatusReg()
 {
     for (int32_t i = 0, n = x86RegIndex_Size; i < n; i++)
     {
-        if (GetX86Mapped((x86RegIndex)i) != CX86RegInfo::FPStatusReg_Mapped)
+        x86RegIndex RegIndex = (x86RegIndex)i;
+        if (GetX86Mapped(RegIndex) != CX86RegInfo::FPStatusReg_Mapped)
         {
             continue;
         }
-        UnMap_X86reg(GetX86RegFromIndex((x86RegIndex)i));
+        SetX86Protected(RegIndex, false);
+        if (!UnMap_X86reg(GetX86RegFromIndex(RegIndex)))
+        {
+            g_Notify->BreakPoint(__FILE__, __LINE__);
+        }
         break;
     }
 }
@@ -1803,15 +1608,16 @@ bool CX86RegInfo::UnMap_X86reg(const asmjit::x86::Gp & Reg)
             }
         }
     }
+    else if (GetX86Protected(RegIndex))
+    {
+        return false;
+    }
     else if (GetX86Mapped(RegIndex) == CX86RegInfo::Temp_Mapped)
     {
-        if (!GetX86Protected(RegIndex))
-        {
-            m_CodeBlock.Log("    regcache: unallocate %s from temp storage", CX86Ops::x86_Name(Reg));
-            SetX86Mapped(RegIndex, NotMapped);
-            SetX86Protected(RegIndex, false);
-            return true;
-        }
+        m_CodeBlock.Log("    regcache: unallocate %s from temp storage", CX86Ops::x86_Name(Reg));
+        SetX86Mapped(RegIndex, NotMapped);
+        SetX86Protected(RegIndex, false);
+        return true;
     }
     else if (GetX86Mapped(RegIndex) == CX86RegInfo::Stack_Mapped)
     {

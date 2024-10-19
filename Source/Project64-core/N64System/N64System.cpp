@@ -4,7 +4,6 @@
 #include <Common/Util.h>
 #include <Project64-core/3rdParty/zip.h>
 #include <Project64-core/Debugger.h>
-#include <Project64-core/ExceptionHandler.h>
 #include <Project64-core/Logging.h>
 #include <Project64-core/N64System/Enhancement/Enhancements.h>
 #include <Project64-core/N64System/Mips/Disk.h>
@@ -62,7 +61,7 @@ CN64System::CN64System(CPlugins * Plugins, uint32_t randomizer_seed, bool SavesR
     }
     m_Limiter.SetHertz(gameHertz);
     g_Settings->SaveDword(GameRunning_ScreenHertz, gameHertz);
-    if (!m_MMU_VM.Initialize(SyncSystem))
+    if (!m_MMU_VM.Initialize())
     {
         WriteTrace(TraceN64System, TraceWarning, "MMU failed to initialize");
         WriteTrace(TraceN64System, TraceDebug, "Done");
@@ -800,16 +799,7 @@ void CN64System::StartEmulation2(bool NewThread)
 void CN64System::StartEmulation(bool NewThread)
 {
     WriteTrace(TraceN64System, TraceDebug, "Start (NewThread: %s)", NewThread ? "true" : "false");
-    __except_try()
-    {
-        StartEmulation2(NewThread);
-    }
-    __except_catch()
-    {
-        char message[400];
-        sprintf(message, "Exception caught\nFile: %s\nLine: %d", __FILE__, __LINE__);
-        g_Notify->DisplayError(message);
-    }
+    StartEmulation2(NewThread);
     WriteTrace(TraceN64System, TraceDebug, "Done (NewThread: %s)", NewThread ? "true" : "false")
 }
 
@@ -979,9 +969,6 @@ bool CN64System::SetActiveSystem(bool bActive)
         g_SystemTimer = &m_SystemTimer;
         g_NextTimer = &m_NextTimer;
         g_Plugins = m_Plugins;
-        g_TLBLoadAddress = &m_TLBLoadAddress;
-        g_TLBStoreAddress = &m_TLBStoreAddress;
-        g_RecompPos = m_Recomp ? m_Recomp->RecompPos() : nullptr;
         g_Random = &m_Random;
     }
     else
@@ -996,8 +983,6 @@ bool CN64System::SetActiveSystem(bool bActive)
             g_SystemTimer = nullptr;
             g_NextTimer = nullptr;
             g_Plugins = m_Plugins;
-            g_TLBLoadAddress = nullptr;
-            g_TLBStoreAddress = nullptr;
             g_Random = nullptr;
         }
     }
@@ -1358,7 +1343,7 @@ void CN64System::DumpSyncErrors()
 #endif
         if (m_Reg.m_PROGRAM_COUNTER != m_SyncCPU->m_Reg.m_PROGRAM_COUNTER)
         {
-            Error.LogF("PROGRAM_COUNTER 0x%X,         0x%X\r\n", m_Reg.m_PROGRAM_COUNTER, m_SyncCPU->m_Reg.m_PROGRAM_COUNTER);
+            Error.LogF("PROGRAM_COUNTER 0x%016llX,         0x%016llX\r\n", m_Reg.m_PROGRAM_COUNTER, m_SyncCPU->m_Reg.m_PROGRAM_COUNTER);
         }
         if (b32BitCore())
         {
@@ -1579,20 +1564,22 @@ void CN64System::DumpSyncErrors()
         Error.Log("Code at PC:\r\n");
         for (count = -10; count < 10; count++)
         {
-            uint32_t OpcodeValue, Addr = m_Reg.m_PROGRAM_COUNTER + (count << 2);
-            if (g_MMU->MemoryValue32(Addr, OpcodeValue))
+            uint64_t Addr = m_Reg.m_PROGRAM_COUNTER + (count << 2);
+            uint32_t OpcodeValue;
+            if (g_MMU->MemoryValue32((uint32_t)Addr, OpcodeValue))
             {
-                Error.LogF("%X: %s\r\n", Addr, R4300iInstruction(Addr, OpcodeValue).NameAndParam().c_str());
+                Error.LogF("%X: %s\r\n", (uint32_t)Addr, R4300iInstruction(Addr, OpcodeValue).NameAndParam().c_str());
             }
         }
         Error.Log("\r\n");
         Error.Log("Code at last sync PC:\r\n");
         for (count = 0; count < 50; count++)
         {
-            uint32_t OpcodeValue, Addr = m_LastSuccessSyncPC[0] + (count << 2);
-            if (g_MMU->MemoryValue32(Addr, OpcodeValue))
+            uint64_t Addr = m_LastSuccessSyncPC[0] + (count << 2);
+            uint32_t OpcodeValue;
+            if (g_MMU->MemoryValue32((uint32_t)Addr, OpcodeValue))
             {
-                Error.LogF("%X: %s\r\n", Addr, R4300iInstruction(Addr, OpcodeValue).NameAndParam().c_str());
+                Error.LogF("%X: %s\r\n", (uint32_t)Addr, R4300iInstruction(Addr, OpcodeValue).NameAndParam().c_str());
             }
         }
     }
@@ -1676,8 +1663,7 @@ bool CN64System::SaveState()
             zipWriteInFileInZip(file, g_Rom->GetRomAddress(), 0x40);
         }
         zipWriteInFileInZip(file, &NextViTimer, sizeof(uint32_t));
-        int64_t WriteProgramCounter = ((int32_t)m_Reg.m_PROGRAM_COUNTER);
-        zipWriteInFileInZip(file, &WriteProgramCounter, sizeof(int64_t));
+        zipWriteInFileInZip(file, &m_Reg.m_PROGRAM_COUNTER, sizeof(int64_t));
         zipWriteInFileInZip(file, m_Reg.m_GPR, sizeof(int64_t) * 32);
         zipWriteInFileInZip(file, m_Reg.m_FPR, sizeof(int64_t) * 32);
         zipWriteInFileInZip(file, m_Reg.m_CP0, sizeof(uint64_t) * 32);
@@ -1747,8 +1733,7 @@ bool CN64System::SaveState()
             hSaveFile.Write(g_Rom->GetRomAddress(), 0x40);
         }
         hSaveFile.Write(&NextViTimer, sizeof(uint32_t));
-        int64_t WriteProgramCounter = ((int32_t)m_Reg.m_PROGRAM_COUNTER);
-        hSaveFile.Write(&WriteProgramCounter, sizeof(int64_t));
+        hSaveFile.Write(&m_Reg.m_PROGRAM_COUNTER, sizeof(int64_t));
         hSaveFile.Write(m_Reg.m_GPR, sizeof(int64_t) * 32);
         hSaveFile.Write(m_Reg.m_FPR, sizeof(int64_t) * 32);
         hSaveFile.Write(m_Reg.m_CP0, sizeof(uint64_t) * 32);
@@ -1939,9 +1924,6 @@ bool CN64System::LoadState(const char * FileName)
                 }
                 Reset(false, true);
 
-                m_MMU_VM.UnProtectMemory(0x80000000, 0x80000000 + m_MMU_VM.RdramSize() - 4);
-                m_MMU_VM.UnProtectMemory(0xA4000000, 0xA4000FFC);
-                m_MMU_VM.UnProtectMemory(0xA4001000, 0xA4001FFC);
                 g_Settings->SaveDword(Game_RDRamSize, SaveRDRAMSize);
                 unzReadCurrentFile(file, &NextVITimer, sizeof(NextVITimer));
                 if (SaveID == 0x23D8A6C8)
@@ -2084,8 +2066,6 @@ bool CN64System::LoadState(const char * FileName)
             }
         }
         Reset(false, true);
-        m_MMU_VM.UnProtectMemory(0x80000000, 0x80000000 + m_MMU_VM.RdramSize() - 4);
-        m_MMU_VM.UnProtectMemory(0xA4000000, 0xA4001FFC);
         g_Settings->SaveDword(Game_RDRamSize, SaveRDRAMSize);
 
         hSaveFile.Read(&NextVITimer, sizeof(NextVITimer));
@@ -2283,7 +2263,7 @@ void CN64System::NotifyCallback(CN64SystemCB Type)
     }
 }
 
-void CN64System::DelayedJump(uint32_t JumpLocation)
+void CN64System::DelayedJump(uint64_t JumpLocation)
 {
     if (m_PipelineStage == PIPELINE_STAGE_JUMP)
     {
@@ -2301,7 +2281,7 @@ void CN64System::DelayedJump(uint32_t JumpLocation)
     }
 }
 
-void CN64System::DelayedRelativeJump(uint32_t RelativeLocation)
+void CN64System::DelayedRelativeJump(uint64_t RelativeLocation)
 {
     if (m_PipelineStage == PIPELINE_STAGE_JUMP)
     {
@@ -2316,7 +2296,7 @@ void CN64System::DelayedRelativeJump(uint32_t RelativeLocation)
     if (m_Reg.m_PROGRAM_COUNTER == m_JumpToLocation)
     {
         R4300iOpcode DelaySlot;
-        if (m_MMU_VM.MemoryValue32(m_Reg.m_PROGRAM_COUNTER + 4, DelaySlot.Value) && !R4300iInstruction(m_Reg.m_PROGRAM_COUNTER, m_OpCodes.Opcode().Value).DelaySlotEffectsCompare(DelaySlot.Value))
+        if (m_MMU_VM.MemoryValue32((uint32_t)(m_Reg.m_PROGRAM_COUNTER + 4), DelaySlot.Value) && !R4300iInstruction(m_Reg.m_PROGRAM_COUNTER, m_OpCodes.Opcode().Value).DelaySlotEffectsCompare(DelaySlot.Value))
         {
             m_PipelineStage = PIPELINE_STAGE_PERMLOOP_DO_DELAY;
         }
@@ -2368,20 +2348,13 @@ void CN64System::RefreshScreen()
         m_CPU_Usage.StartTimer(Timer_UpdateScreen);
     }
 
-    __except_try()
+    WriteTrace(TraceVideoPlugin, TraceDebug, "UpdateScreen starting");
+    m_Plugins->Gfx()->UpdateScreen();
+    if (g_Debugger != nullptr && HaveDebugger())
     {
-        WriteTrace(TraceVideoPlugin, TraceDebug, "UpdateScreen starting");
-        m_Plugins->Gfx()->UpdateScreen();
-        if (g_Debugger != nullptr && HaveDebugger())
-        {
-            g_Debugger->FrameDrawn();
-        }
-        WriteTrace(TraceVideoPlugin, TraceDebug, "UpdateScreen done");
+        g_Debugger->FrameDrawn();
     }
-    __except_catch()
-    {
-        WriteTrace(TraceVideoPlugin, TraceError, "Exception caught");
-    }
+    WriteTrace(TraceVideoPlugin, TraceDebug, "UpdateScreen done");
     g_MMU->VideoInterface().UpdateFieldSerration((m_Reg.VI_STATUS_REG & 0x40) != 0);
 
     if ((bBasicMode() || bLimitFPS()) && (!bSyncToAudio() || !FullSpeed()))

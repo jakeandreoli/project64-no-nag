@@ -36,6 +36,21 @@ class RDRAMRegistersHandler :
     private CDebugSettings,
     private CLogging
 {
+    struct RDRAM_DEVICE
+    {
+        uint32_t DeviceType;
+        uint32_t DeviceId;
+        uint32_t Delay;
+        uint32_t Mode;
+        uint32_t RefreshInterval;
+        uint32_t RefreshRow;
+        uint32_t RasInterval;
+        uint32_t MinInterval;
+        uint32_t AddressSelect;
+        uint32_t DeviceManufacturer;
+        uint32_t CurrentControl;
+    };
+
 public:
     RDRAMRegistersHandler(CRegisters & Reg);
 
@@ -47,5 +62,6 @@ private:
     RDRAMRegistersHandler(const RDRAMRegistersHandler &);
     RDRAMRegistersHandler & operator=(const RDRAMRegistersHandler &);
 
-    uint32_t & m_PC;
+    RDRAM_DEVICE m_Device[4];
+    uint64_t & m_PC;
 };

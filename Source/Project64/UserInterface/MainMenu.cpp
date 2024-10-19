@@ -26,7 +26,6 @@ CMainMenu::CMainMenu(CMainGui * hMainWindow) :
     m_ChangeSettingList.push_back(Logging_GenerateLog);
     m_ChangeSettingList.push_back(Debugger_RecordExecutionTimes);
     m_ChangeSettingList.push_back(Debugger_EndOnPermLoop);
-    m_ChangeSettingList.push_back(Debugger_FpuExceptionInRecompiler);
     m_ChangeSettingList.push_back(Debugger_BreakOnUnhandledMemory);
     m_ChangeSettingList.push_back(Debugger_BreakOnAddressError);
     m_ChangeSettingList.push_back(Debugger_StepOnBreakOpCode);
@@ -52,7 +51,6 @@ CMainMenu::CMainMenu(CMainGui * hMainWindow) :
     m_ChangeSettingList.push_back(Debugger_TraceRegisterCache);
     m_ChangeSettingList.push_back(Debugger_TraceRecompiler);
     m_ChangeSettingList.push_back(Debugger_TraceTLB);
-    m_ChangeSettingList.push_back(Debugger_TraceProtectedMEM);
     m_ChangeSettingList.push_back(Debugger_TraceUserInterface);
     m_ChangeSettingList.push_back(Debugger_AppLogFlush);
     m_ChangeSettingList.push_back(Game_CurrentSaveState);
@@ -224,41 +222,40 @@ void CMainMenu::OnScreenShot(void)
 
 void CMainMenu::OnSaveAs(HWND hWnd)
 {
-    char drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
-    char Directory[255], SaveFile[255];
-    OPENFILENAMEA openfilename;
+    char Directory[255];
+    wchar_t SaveFileString[255];
+    OPENFILENAME openfilename;
 
-    memset(&SaveFile, 0, sizeof(SaveFile));
+    memset(&SaveFileString, 0, sizeof(SaveFileString));
     memset(&openfilename, 0, sizeof(openfilename));
 
     UISettingsLoadStringVal(Directory_LastSave, Directory, sizeof(Directory));
+    std::wstring InitialDirectory = stdstr((const char *)(CPath(Directory, "").NormalizePath(CPath(CPath::MODULE_DIRECTORY)))).ToUTF16();
 
     openfilename.lStructSize = sizeof(openfilename);
     openfilename.hwndOwner = (HWND)hWnd;
-    openfilename.lpstrFilter = "Project64 saves (*.zip, *.pj)\0*.pj?;*.pj;*.zip;";
-    openfilename.lpstrFile = SaveFile;
-    openfilename.lpstrInitialDir = Directory;
+    openfilename.lpstrFilter = L"Project64 saves (*.zip, *.pj)\0*.pj?;*.pj;*.zip;";
+    openfilename.lpstrFile = SaveFileString;
+    openfilename.lpstrInitialDir = InitialDirectory.c_str();
     openfilename.nMaxFile = MAX_PATH;
     openfilename.Flags = OFN_HIDEREADONLY;
 
     g_BaseSystem->ExternalEvent(SysEvent_PauseCPU_SaveGame);
-    if (GetSaveFileNameA(&openfilename))
+    if (GetSaveFileName(&openfilename))
     {
-        _splitpath(SaveFile, drive, dir, fname, ext);
-        if (_stricmp(ext, ".pj") == 0 || _stricmp(ext, ".zip") == 0)
+        CPath SaveFile(stdstr().FromUTF16(SaveFileString));
+        std::string ext = SaveFile.GetExtension();
+        if (_stricmp(ext.c_str(), "pj") == 0 || _stricmp(ext.c_str(), "zip") == 0)
         {
-            _makepath(SaveFile, drive, dir, fname, nullptr);
-            _splitpath(SaveFile, drive, dir, fname, ext);
-            if (_stricmp(ext, ".pj") == 0)
+            SaveFile.SetExtension("");
+            ext = SaveFile.GetExtension();
+            if (_stricmp(ext.c_str(), "pj") == 0)
             {
-                _makepath(SaveFile, drive, dir, fname, nullptr);
+                SaveFile.SetExtension("");
             }
         }
-        g_Settings->SaveString(GameRunning_InstantSaveFile, SaveFile);
-
-        char SaveDir[MAX_PATH];
-        _makepath(SaveDir, drive, dir, nullptr, nullptr);
-        UISettingsSaveString(Directory_LastSave, SaveDir);
+        g_Settings->SaveString(GameRunning_InstantSaveFile, (const char *)SaveFile);
+        UISettingsSaveString(Directory_LastSave, SaveFile.GetDriveDirectory());
         g_BaseSystem->ExternalEvent(SysEvent_SaveMachineState);
     }
     g_BaseSystem->ExternalEvent(SysEvent_ResumeCPU_SaveGame);
@@ -503,9 +500,6 @@ bool CMainMenu::ProcessMessage(HWND hWnd, DWORD /*FromAccelerator*/, DWORD MenuI
     case ID_DEBUG_END_ON_PERM_LOOP:
         g_Settings->SaveBool(Debugger_EndOnPermLoop, !g_Settings->LoadBool(Debugger_EndOnPermLoop));
         break;
-    case ID_DEBUG_FPU_EXCEPTION_IN_RECOMPILER:
-        g_Settings->SaveBool(Debugger_FpuExceptionInRecompiler, !g_Settings->LoadBool(Debugger_FpuExceptionInRecompiler));
-        break;
     case ID_DEBUG_BREAK_ON_UNHANDLED_MEM:
         g_Settings->SaveBool(Debugger_BreakOnUnhandledMemory, !g_Settings->LoadBool(Debugger_BreakOnUnhandledMemory));
         break;
@@ -553,7 +547,6 @@ bool CMainMenu::ProcessMessage(HWND hWnd, DWORD /*FromAccelerator*/, DWORD MenuI
     case ID_DEBUGGER_TRACE_REGISTERCACHE: SetTraceModuleSetttings(Debugger_TraceRegisterCache); break;
     case ID_DEBUGGER_TRACE_RECOMPILER: SetTraceModuleSetttings(Debugger_TraceRecompiler); break;
     case ID_DEBUGGER_TRACE_TLB: SetTraceModuleSetttings(Debugger_TraceTLB); break;
-    case ID_DEBUGGER_TRACE_PROTECTEDMEM: SetTraceModuleSetttings(Debugger_TraceProtectedMEM); break;
     case ID_DEBUGGER_TRACE_USERINTERFACE: SetTraceModuleSetttings(Debugger_TraceUserInterface); break;
 
     case ID_DEBUGGER_APPLOG_FLUSH:
@@ -1155,12 +1148,6 @@ void CMainMenu::FillOutMenu(HMENU hMenu)
             Item.SetItemTicked(true);
         }
         DebugR4300Menu.push_back(Item);
-        Item.Reset(ID_DEBUG_FPU_EXCEPTION_IN_RECOMPILER, EMPTY_STRING, EMPTY_STDSTR, nullptr, L"Fpu Exception In Recompiler");
-        if (g_Settings->LoadBool(Debugger_FpuExceptionInRecompiler))
-        {
-            Item.SetItemTicked(true);
-        }
-        DebugR4300Menu.push_back(Item);
         Item.Reset(ID_DEBUG_BREAK_ON_UNHANDLED_MEM, EMPTY_STRING, EMPTY_STDSTR, nullptr, L"Break on unhandled memory actions");
         if (g_Settings->LoadBool(Debugger_BreakOnUnhandledMemory))
         {
@@ -1257,10 +1244,6 @@ void CMainMenu::FillOutMenu(HMENU hMenu)
 
         Item.Reset(ID_DEBUGGER_TRACE_TLB, EMPTY_STRING, EMPTY_STDSTR, nullptr, L"TLB");
         Item.SetItemTicked(g_Settings->LoadDword(Debugger_TraceTLB) == TraceVerbose);
-        DebugAppLoggingMenu.push_back(Item);
-
-        Item.Reset(ID_DEBUGGER_TRACE_PROTECTEDMEM, EMPTY_STRING, EMPTY_STDSTR, nullptr, L"Protected MEM");
-        Item.SetItemTicked(g_Settings->LoadDword(Debugger_TraceProtectedMEM) == TraceVerbose);
         DebugAppLoggingMenu.push_back(Item);
 
         Item.Reset(ID_DEBUGGER_TRACE_USERINTERFACE, EMPTY_STRING, EMPTY_STDSTR, nullptr, L"User interface");

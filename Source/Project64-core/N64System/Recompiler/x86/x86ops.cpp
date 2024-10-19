@@ -10,7 +10,7 @@ CX86Ops::CX86Ops(CCodeBlock & CodeBlock) :
     asmjit::x86::Assembler(&CodeBlock.CodeHolder()),
     m_CodeBlock(CodeBlock)
 {
-    setLogger(this);
+    setLogger(CDebugSettings::bRecordRecompilerAsm() ? this : nullptr);
     setErrorHandler(&CodeBlock);
     addFlags(asmjit::FormatFlags::kHexOffsets);
     addFlags(asmjit::FormatFlags::kHexImms);
@@ -286,6 +286,12 @@ void CX86Ops::JbLabel(const char * LabelName, asmjit::Label & JumpLabel)
     jb(JumpLabel);
 }
 
+void CX86Ops::JbeLabel(const char * LabelName, asmjit::Label & JumpLabel)
+{
+    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    jbe(JumpLabel);
+}
+
 void CX86Ops::JecxzLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
     AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
@@ -407,6 +413,22 @@ void CX86Ops::MoveConstToVariable(void * Variable, const char * VariableName, ui
         std::string SymbolKey = VariableSymbol(Variable);
         AddSymbol(SymbolKey.c_str(), VariableName);
         mov(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
+        RemoveSymbol(SymbolKey.c_str());
+    }
+    else
+    {
+        mov(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
+    }
+}
+
+void CX86Ops::MoveConst64ToVariable(void * Variable, const char * VariableName, uint64_t Const)
+{
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        std::string SymbolKey = VariableSymbol(Variable);
+        AddSymbol(SymbolKey.c_str(), VariableName);
+        mov(asmjit::x86::dword_ptr((uint64_t)Variable), (uint32_t)Const);
+        mov(asmjit::x86::dword_ptr(((uint64_t)Variable) + 4), (uint32_t)(Const >> 32));
         RemoveSymbol(SymbolKey.c_str());
     }
     else
@@ -759,6 +781,12 @@ void CX86Ops::XorVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable, 
     }
 }
 
+void CX86Ops::fpuCompp(int32_t & StackPos)
+{
+    StackPos = (StackPos + 2) & 7;
+    fcompp();
+}
+
 void CX86Ops::fpuIncStack(int32_t & StackPos)
 {
     StackPos = (StackPos + 1) & 7;
@@ -783,6 +811,18 @@ void CX86Ops::fpuLoadControl(void * Variable, const char * VariableName)
 void CX86Ops::fpuLoadDwordFromX86Reg(int32_t & StackPos, const asmjit::x86::Gp & x86reg)
 {
     fld(asmjit::x86::dword_ptr(x86reg));
+    StackPos = (StackPos - 1) & 7;
+}
+
+void CX86Ops::fpuLoadDwordFromStackReg(int32_t & StackPos, const asmjit::x86::St & StackReg)
+{
+    fld(StackReg);
+    StackPos = (StackPos - 1) & 7;
+}
+
+void CX86Ops::fpuLoadDwordFromPtr(int32_t & StackPos, uint64_t Ptr)
+{
+    fld(asmjit::x86::dword_ptr(Ptr));
     StackPos = (StackPos - 1) & 7;
 }
 

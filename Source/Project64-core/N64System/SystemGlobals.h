@@ -31,13 +31,9 @@ class CSystemTimer;
 extern CSystemTimer * g_SystemTimer;
 
 extern int32_t * g_NextTimer;
-extern uint32_t * g_TLBLoadAddress;
-extern uint32_t * g_TLBStoreAddress;
 
 __interface CDebugger;
 extern CDebugger * g_Debugger;
-
-extern uint8_t ** g_RecompPos;
 
 class CMempak;
 extern CMempak * g_Mempak;

@@ -309,9 +309,6 @@
     <ClCompile Include="N64System\Recompiler\x86\x86RegInfo.cpp">
       <Filter>Source Files\N64 System\Recompiler\x86</Filter>
     </ClCompile>
-    <ClCompile Include="MemoryExceptionFilter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="N64System\Recompiler\RegBase.cpp">
       <Filter>Source Files\N64 System\Recompiler</Filter>
     </ClCompile>
@@ -645,9 +642,6 @@
       <Filter>Header Files\N64 System</Filter>
     </ClInclude>
     <ClInclude Include="TraceModulesProject64.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ExceptionHandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="N64System\Mips\Disk.h">

@@ -140,7 +140,6 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Default_SyncViaAudio, new CSettingTypeApplication("Defaults", "Audio-Sync Audio", true));
     AddHandler(Default_FixedAudio, new CSettingTypeApplication("Defaults", "Fixed Audio", true));
     AddHandler(Default_RandomizeSIPIInterrupts, new CSettingTypeApplication("Defaults", "Randomize SI/PI Interrupts", true));
-    AddHandler(Default_SMM_Protect_Memory, new CSettingTypeApplication("Defaults", "SMM-Protect", false));
     AddHandler(Default_DiskSeekTiming, new CSettingTypeApplication("Defaults", "Disk Seek Timing", (uint32_t)DiskSeek_Turbo));
 
     AddHandler(Rdb_GoodName, new CSettingTypeRomDatabase("Good Name", Game_GameName));
@@ -175,7 +174,6 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Rdb_SMM_StoreInstruc, new CSettingTypeRomDatabase("SMM-StoreInst", false));
     AddHandler(Rdb_SMM_PIDMA, new CSettingTypeRomDatabase("SMM-PI DMA", true));
     AddHandler(Rdb_SMM_TLB, new CSettingTypeRomDatabase("SMM-TLB", true));
-    AddHandler(Rdb_SMM_Protect, new CSettingTypeRomDatabase("SMM-Protect", Default_SMM_Protect_Memory));
     AddHandler(Rdb_SMM_ValidFunc, new CSettingTypeRomDatabase("SMM-FUNC", true));
     AddHandler(Rdb_ViRefreshRate, new CSettingTypeRomDatabase("ViRefresh", Default_ViRefreshRate));
     AddHandler(Rdb_AiCountPerBytes, new CSettingTypeRomDatabase("AiCountPerBytes", Default_AiCountPerBytes));
@@ -232,7 +230,6 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Game_SMM_Cache, new CSettingTypeGame("SMM-Cache", Rdb_SMM_Cache));
     AddHandler(Game_SMM_PIDMA, new CSettingTypeGame("SMM-PI DMA", Rdb_SMM_PIDMA));
     AddHandler(Game_SMM_TLB, new CSettingTypeGame("SMM-TLB", Rdb_SMM_TLB));
-    AddHandler(Game_SMM_Protect, new CSettingTypeGame("SMM-Protect", Rdb_SMM_Protect));
     AddHandler(Game_SMM_ValidFunc, new CSettingTypeGame("SMM-FUNC", Rdb_SMM_ValidFunc));
     AddHandler(Game_ViRefreshRate, new CSettingTypeGame("ViRefresh", Rdb_ViRefreshRate));
     AddHandler(Game_AiCountPerBytes, new CSettingTypeGame("AiCountPerBytes", Rdb_AiCountPerBytes));
@@ -254,25 +251,16 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(UserInterface_DisplayFrameRate, new CSettingTypeApplication("Settings", "Display Frame Rate", (uint32_t) false));
     AddHandler(UserInterface_FrameDisplayType, new CSettingTypeApplication("Settings", "Frame Rate Display Type", (uint32_t)FR_VIs));
     AddHandler(Directory_Plugin, new CSettingTypeSelectedDirectory("Dir:Plugin", Directory_PluginInitial, Directory_PluginSelected, Directory_PluginUseSelected, Directory_Plugin));
-#ifndef _M_X64
     AddHandler(Directory_PluginInitial, new CSettingTypeRelativePath("Plugin", ""));
-    AddHandler(Directory_PluginSelected, new CSettingTypeApplicationPath("Plugin Directory", "Directory", Directory_PluginInitial));
-    AddHandler(Directory_PluginUseSelected, new CSettingTypeApplication("Plugin Directory", "Use Selected", false));
-
     AddHandler(Directory_PluginSyncInitial, new CSettingTypeRelativePath("SyncPlugin", ""));
-    AddHandler(Directory_PluginSyncSelected, new CSettingTypeApplicationPath("Sync Plugin Directory", "Directory", Directory_PluginInitial));
+    AddHandler(Directory_PluginUseSelected, new CSettingTypeApplication("Plugin Directory", "Use Selected", false));
     AddHandler(Directory_PluginSyncUseSelected, new CSettingTypeApplication("Sync Plugin Directory", "Use Selected", false));
-
-#else
-    AddHandler(Directory_PluginInitial, new CSettingTypeRelativePath("Plugin64", ""));
-    AddHandler(Directory_PluginSelected, new CSettingTypeApplicationPath("Plugin64 Directory", "Directory", Directory_PluginInitial));
-    AddHandler(Directory_PluginUseSelected, new CSettingTypeApplication("Plugin64 Directory", "Use Selected", false));
-    AddHandler(Directory_PluginSync, new CSettingTypeRelativePath("SyncPlugin64", ""));
-
-    AddHandler(Directory_PluginSyncInitial, new CSettingTypeRelativePath("SyncPlugin64", ""));
-    AddHandler(Directory_PluginSyncSelected, new CSettingTypeApplicationPath("Sync Plugin Directory64", "Directory", Directory_PluginInitial));
-    AddHandler(Directory_PluginSyncUseSelected, new CSettingTypeApplication("Sync Plugin Directory64", "Use Selected", false));
-
+#if (defined(__i386__) || defined(_M_IX86))
+    AddHandler(Directory_PluginSelected, new CSettingTypeApplicationPath("Plugin Directory", "Directory-x86", Directory_PluginInitial));
+    AddHandler(Directory_PluginSyncSelected, new CSettingTypeApplicationPath("Plugin Directory", "Sync Directory-x86", Directory_PluginInitial));
+#elif (defined(__amd64__) || defined(_M_X64))
+    AddHandler(Directory_PluginSelected, new CSettingTypeApplicationPath("Plugin Directory", "Directory-x64", Directory_PluginInitial));
+    AddHandler(Directory_PluginSyncSelected, new CSettingTypeApplicationPath("Plugin Directory", "Sync Directory-x64", Directory_PluginInitial));
 #endif
     AddHandler(Directory_PluginSync, new CSettingTypeSelectedDirectory("Dir:SyncPlugin", Directory_PluginSyncInitial, Directory_PluginSyncSelected, Directory_PluginSyncUseSelected, Directory_PluginSync));
 
@@ -374,10 +362,8 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Debugger_TraceRegisterCache, new CSettingTypeApplication("Logging", "Register Cache", (uint32_t)g_ModuleLogLevel[TraceRegisterCache]));
     AddHandler(Debugger_TraceRecompiler, new CSettingTypeApplication("Logging", "Recompiler", (uint32_t)g_ModuleLogLevel[TraceRecompiler]));
     AddHandler(Debugger_TraceTLB, new CSettingTypeApplication("Logging", "TLB", (uint32_t)g_ModuleLogLevel[TraceTLB]));
-    AddHandler(Debugger_TraceProtectedMEM, new CSettingTypeApplication("Logging", "Protected MEM", (uint32_t)g_ModuleLogLevel[TraceProtectedMem]));
     AddHandler(Debugger_TraceUserInterface, new CSettingTypeApplication("Logging", "User Interface", (uint32_t)g_ModuleLogLevel[TraceUserInterface]));
     AddHandler(Debugger_TraceRomList, new CSettingTypeApplication("Logging", "Rom List", (uint32_t)g_ModuleLogLevel[TraceRomList]));
-    AddHandler(Debugger_TraceExceptionHandler, new CSettingTypeApplication("Logging", "Exception Handler", (uint32_t)g_ModuleLogLevel[TraceExceptionHandler]));
 
     // Plugin
 #ifdef _WIN32

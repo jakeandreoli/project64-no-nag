@@ -1,49 +1,20 @@
 #include "RSPCpu.h"
 #include <Common/CriticalSection.h>
-#include <Project64-rsp-core/Hle/hle.h>
 #include <Project64-rsp-core/RSPDebugger.h>
 #include <Project64-rsp-core/RSPInfo.h>
+#include <Project64-rsp-core/Recompiler/RspRecompilerCPU.h>
 #include <Project64-rsp-core/Settings/RspSettings.h>
 #include <Project64-rsp-core/cpu/RSPRegisters.h>
+#include <Project64-rsp-core/cpu/RspSystem.h>
 #include <memory>
 
 class RSPRegisterHandler;
 
 UDWORD EleSpec[16], Indx[16];
-RSPOpcode RSPOpC;
-uint32_t *PrgCount, NextInstruction, RSP_Running;
-
-p_func RSP_Opcode[64];
-p_func RSP_RegImm[32];
-p_func RSP_Special[64];
-p_func RSP_Cop0[32];
-p_func RSP_Cop2[32];
-p_func RSP_Vector[64];
-p_func RSP_Lc2[32];
-p_func RSP_Sc2[32];
-
-void BuildInterpreterCPU(void);
-void BuildRecompilerCPU(void);
+uint32_t RSP_Running;
 
 CriticalSection g_CPUCriticalSection;
 uint32_t Mfc0Count, SemaphoreExit = 0;
-RSPCpuType g_CPUCore = InterpreterCPU;
-std::unique_ptr<RSPRegisterHandlerPlugin> g_RSPRegisterHandler;
-
-void SetCPU(RSPCpuType core)
-{
-    CGuard Guard(g_CPUCriticalSection);
-    g_CPUCore = core;
-    switch (core)
-    {
-    case RecompilerCPU:
-        BuildRecompilerCPU();
-        break;
-    case InterpreterCPU:
-        BuildInterpreterCPU();
-        break;
-    }
-}
 
 void Build_RSP(void)
 {
@@ -54,7 +25,6 @@ void Build_RSP(void)
     SQroot.UW = 0;
     SQrootResult.UW = 0;
 
-    SetCPU(g_CPUCore);
     if (g_RSPDebugger != nullptr)
     {
         g_RSPDebugger->ResetTimerList();
@@ -108,7 +78,6 @@ void Build_RSP(void)
             Indx[i].B[7 - z] = Temp;
         }
     }
-    PrgCount = RSPInfo.SP_PC_REG;
 }
 
 /*
@@ -122,66 +91,13 @@ be greater than the number of cycles that the RSP should have performed.
 (this value is ignored if the RSP has been stopped)
 */
 
-uint32_t RunInterpreterCPU(uint32_t Cycles);
-uint32_t RunRecompilerCPU(uint32_t Cycles);
-
 #define MI_INTR_SP 0x01 /* Bit 0: SP intr */
 
 uint32_t DoRspCycles(uint32_t Cycles)
 {
-    extern bool AudioHle, GraphicsHle;
-    uint32_t TaskType = *(uint32_t *)(RSPInfo.DMEM + 0xFC0);
-
-    if (TaskType == 1 && GraphicsHle && *(uint32_t *)(RSPInfo.DMEM + 0x0ff0) != 0)
+    if (RSPSystem.IsHleTask() && RSPSystem.ProcessHleTask())
     {
-        if (RSPInfo.ProcessDList != NULL)
-        {
-            RSPInfo.ProcessDList();
-        }
-        *RSPInfo.SP_STATUS_REG |= (0x0203);
-        if ((*RSPInfo.SP_STATUS_REG & SP_STATUS_INTR_BREAK) != 0)
-        {
-            *RSPInfo.MI_INTR_REG |= MI_INTR_SP;
-            RSPInfo.CheckInterrupts();
-        }
-
-        *RSPInfo.DPC_STATUS_REG &= ~0x0002;
         return Cycles;
-    }
-    else if (TaskType == 2 && HleAlistTask)
-    {
-        if (g_hle == nullptr)
-        {
-            g_hle = new CHle(RSPInfo);
-        }
-        if (g_hle != nullptr)
-        {
-            g_hle->try_fast_audio_dispatching();
-            *RSPInfo.SP_STATUS_REG |= SP_STATUS_SIG2 | SP_STATUS_BROKE | SP_STATUS_HALT;
-            if ((*RSPInfo.SP_STATUS_REG & SP_STATUS_INTR_BREAK) != 0)
-            {
-                *RSPInfo.MI_INTR_REG |= MI_INTR_SP;
-                RSPInfo.CheckInterrupts();
-            }
-        }
-    }
-    else if (TaskType == 2 && AudioHle)
-    {
-        if (RSPInfo.ProcessAList != NULL)
-        {
-            RSPInfo.ProcessAList();
-        }
-        *RSPInfo.SP_STATUS_REG |= SP_STATUS_SIG2 | SP_STATUS_BROKE | SP_STATUS_HALT;
-        if ((*RSPInfo.SP_STATUS_REG & SP_STATUS_INTR_BREAK) != 0)
-        {
-            *RSPInfo.MI_INTR_REG |= MI_INTR_SP;
-            RSPInfo.CheckInterrupts();
-        }
-        return Cycles;
-    }
-    else if (TaskType == 7)
-    {
-        RSPInfo.ShowCFB();
     }
 
     if (g_RSPDebugger != nullptr)
@@ -190,13 +106,15 @@ uint32_t DoRspCycles(uint32_t Cycles)
     }
     CGuard Guard(g_CPUCriticalSection);
 
-    switch (g_CPUCore)
+    switch (CRSPSettings::CPUMethod())
     {
-    case RecompilerCPU:
-        RunRecompilerCPU(Cycles);
+    case RSPCpuMethod::Recompiler:
+        RSPSystem.RunRecompiler();
         break;
-    case InterpreterCPU:
-        RunInterpreterCPU(Cycles);
+    case RSPCpuMethod::Interpreter:
+    case RSPCpuMethod::RecompilerTasks:
+    case RSPCpuMethod::HighLevelEmulation:
+        RSPSystem.ExecuteOps((uint32_t)-1, (uint32_t)-1);
         break;
     }
     if (g_RSPDebugger != nullptr)

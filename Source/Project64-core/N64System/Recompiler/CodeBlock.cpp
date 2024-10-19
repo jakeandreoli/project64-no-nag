@@ -4,6 +4,7 @@
 #include <Project64-core/N64System/N64System.h>
 #include <Project64-core/N64System/Recompiler/Arm/ArmRecompilerOps.h>
 #include <Project64-core/N64System/Recompiler/CodeBlock.h>
+#include <Project64-core/N64System/Recompiler/Recompiler.h>
 #include <Project64-core/N64System/Recompiler/x86/x86RecompilerOps.h>
 #include <Project64-core/N64System/SystemGlobals.h>
 #include <string.h>
@@ -14,6 +15,7 @@ extern "C" void __clear_cache_android(uint8_t * begin, uint8_t * end);
 #endif
 
 CCodeBlock::CCodeBlock(CN64System & System, uint32_t VAddrEnter) :
+    m_Recompiler(*System.m_Recomp),
     m_MMU(System.m_MMU_VM),
     m_Reg(System.m_Reg),
     m_VAddrEnter(VAddrEnter),
@@ -890,25 +892,28 @@ bool CCodeBlock::Compile()
     return true;
 }
 
-uint32_t CCodeBlock::Finilize(uint8_t * CompiledLocation)
+uint32_t CCodeBlock::Finilize(CRecompMemory & RecompMem)
 {
+    m_CompiledLocation = RecompMem.RecompPos();
+    m_CodeHolder.relocateToBase((uint64_t)m_CompiledLocation);
     if (CDebugSettings::bRecordRecompilerAsm())
     {
         std::string CodeLog = m_CodeLog;
         m_CodeLog.clear();
         Log("====== Code block ======");
-        Log("Native entry point: %X", CompiledLocation);
+        Log("Native entry point: %X", m_CompiledLocation);
         Log("Start of block: %X", VAddrEnter());
         Log("Number of sections: %d", NoOfSections());
         Log("====== Recompiled code ======");
         m_CodeLog += CodeLog;
     }
-
-    m_CompiledLocation = CompiledLocation;
-    m_CodeHolder.relocateToBase((uint64_t)m_CompiledLocation);
     size_t codeSize = m_CodeHolder.codeSize();
+    if (!RecompMem.CheckRecompMem(codeSize))
+    {
+        return 0;
+    }
     m_CodeHolder.copyFlattenedData(m_CompiledLocation, codeSize, asmjit::CopySectionFlags::kPadSectionBuffer);
-    *g_RecompPos += codeSize;
+    m_Recompiler.RecompPos() += codeSize;
 
 #if defined(ANDROID) && (defined(__arm__) || defined(_M_ARM))
     __clear_cache((uint8_t *)((uint32_t)m_CompiledLocation & ~1), m_CompiledLocation + codeSize);

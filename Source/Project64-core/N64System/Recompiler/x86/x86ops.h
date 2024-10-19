@@ -54,6 +54,7 @@ public:
     void JaeLabel(const char * LabelName, asmjit::Label & JumpLabel);
     void JaLabel(const char * LabelName, asmjit::Label & JumpLabel);
     void JbLabel(const char * LabelName, asmjit::Label & JumpLabel);
+    void JbeLabel(const char * LabelName, asmjit::Label & JumpLabel);
     void JecxzLabel(const char * LabelName, asmjit::Label & JumpLabel);
     void JeLabel(const char * LabelName, asmjit::Label & JumpLabel);
     void JgeLabel(const char * LabelName, asmjit::Label & JumpLabel);
@@ -71,6 +72,7 @@ public:
     void MoveConstByteToVariable(void * Variable, const char * VariableName, uint8_t Const);
     void MoveConstHalfToVariable(void * Variable, const char * VariableName, uint16_t Const);
     void MoveConstToVariable(void * Variable, const char * VariableName, uint32_t Const);
+    void MoveConst64ToVariable(void * Variable, const char * VariableName, uint64_t Const);
     void MoveConstToX86reg(const asmjit::x86::Gp & Reg, uint32_t Const);
     void MoveSxVariableToX86regByte(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName);
     void MoveSxVariableToX86regHalf(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName);
@@ -95,9 +97,12 @@ public:
     void TestVariable(void * Variable, const char * VariableName, uint32_t Const);
     void XorVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName);
 
+    void fpuCompp(int32_t & StackPos);
     void fpuIncStack(int32_t & StackPos);
     void fpuLoadControl(void * Variable, const char * VariableName);
     void fpuLoadDwordFromX86Reg(int32_t & StackPos, const asmjit::x86::Gp & Reg);
+    void fpuLoadDwordFromStackReg(int32_t & StackPos, const asmjit::x86::St & Reg);
+    void fpuLoadDwordFromPtr(int32_t & StackPos, uint64_t Ptr);
     void fpuLoadIntegerDwordFromX86Reg(int32_t & StackPos, const asmjit::x86::Gp & Reg);
     void fpuLoadIntegerQwordFromX86Reg(int32_t & StackPos, const asmjit::x86::Gp & Reg);
     void fpuLoadQwordFromX86Reg(int32_t & StackPos, const asmjit::x86::Gp & Reg);

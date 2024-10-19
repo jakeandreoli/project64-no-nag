@@ -6,11 +6,17 @@
 #include <Project64-rsp-core/cpu/RSPCpu.h>
 #include <Project64-rsp-core/cpu/RSPInstruction.h>
 #include <Project64-rsp-core/cpu/RspLog.h>
+#include <Project64-rsp-core/cpu/RspSystem.h>
 #include <Project64-rsp/RSP Command.h>
 #include <Project64-rsp/breakpoint.h>
 
 void UpdateRSPRegistersScreen(void);
-void RDP_LogLoc(DWORD /*PC*/);
+
+RSPDebuggerUI::RSPDebuggerUI(CRSPSystem & System) :
+    m_System(System),
+    m_OpCode(System.m_OpCode)
+{
+}
 
 void RSPDebuggerUI::ResetTimerList(void)
 {
@@ -86,8 +92,6 @@ void RSPDebuggerUI::BeforeExecuteOp(void)
             }
         }
     }
-
-    RDP_LogLoc(*PrgCount);
 }
 
 void RSPDebuggerUI::UnknownOpcode(void)
@@ -98,12 +102,12 @@ void RSPDebuggerUI::UnknownOpcode(void)
     if (InRSPCommandsWindow)
     {
         SetRSPCommandViewto(*RSPInfo.SP_PC_REG);
-        DisplayError("Unhandled Opcode\n%s\n\nStopping emulation", RSPInstruction(*RSPInfo.SP_PC_REG, RSPOpC.Value).NameAndParam().c_str());
+        DisplayError("Unhandled Opcode\n%s\n\nStopping emulation", RSPInstruction(*RSPInfo.SP_PC_REG, m_OpCode.Value).NameAndParam().c_str());
     }
     else
     {
         sprintf(Message, "Unhandled Opcode\n%s\n\nStopping emulation.\n\nWould you like to open the debugger?",
-                RSPInstruction(*RSPInfo.SP_PC_REG, RSPOpC.Value).NameAndParam().c_str());
+                RSPInstruction(*RSPInfo.SP_PC_REG, m_OpCode.Value).NameAndParam().c_str());
         response = MessageBoxA(NULL, Message, "Error", MB_YESNO | MB_ICONERROR);
         if (response == IDYES)
         {
@@ -115,8 +119,8 @@ void RSPDebuggerUI::UnknownOpcode(void)
 
 void RSPDebuggerUI::RDP_LogMF0(uint32_t PC, uint32_t Reg)
 {
-    if (LogRDP && g_CPUCore == InterpreterCPU)
+    if (LogRDP && CRSPSettings::CPUMethod() == RSPCpuMethod::Interpreter)
     {
-        ::RDP_LogMF0(PC, Reg);
+        RDPLog.LogMF0(PC, Reg);
     }
 }
