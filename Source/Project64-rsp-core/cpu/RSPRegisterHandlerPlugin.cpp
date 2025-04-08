@@ -2,7 +2,7 @@
 #include "RSPCpu.h"
 #include "RSPRegisters.h"
 #include <Project64-rsp-core/RSPInfo.h>
-#include <Project64-rsp-core/Recompiler/RspRecompilerCPU.h>
+#include <Project64-rsp-core/Recompiler/RspRecompilerCPU-x86.h>
 #include <Project64-rsp-core/cpu/RspMemory.h>
 #include <Project64-rsp-core/cpu/RspSystem.h>
 
@@ -41,8 +41,12 @@ void RSPRegisterHandlerPlugin::SetHalt(void)
 
 void RSPRegisterHandlerPlugin::DmaReadDone(uint32_t End)
 {
+#if defined(__i386__) || defined(_M_IX86)
     if (CPUMethod() == RSPCpuMethod::Recompiler && (*RSPInfo.SP_MEM_ADDR_REG & 0x1000) != 0)
     {
         m_System.m_Recompiler.SetJumpTable(End);
     }
+#else
+    End = End;
+#endif
 }

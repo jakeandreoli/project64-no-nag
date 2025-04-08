@@ -13,11 +13,11 @@ class R4300iOp :
     friend CX86RecompilerOps;
 
 public:
-    R4300iOp(CN64System & System);
+    R4300iOp(CN64System & System, bool Force32bit);
     ~R4300iOp(void);
 
     void ExecuteCPU();
-    void ExecuteOps(int32_t Cycles);
+    void ExecuteOps(uint32_t Cycles);
     void InPermLoop();
 
     R4300iOpcode Opcode(void) const
@@ -30,7 +30,7 @@ private:
     R4300iOp(const R4300iOp &);
     R4300iOp & operator=(const R4300iOp &);
 
-    void BuildInterpreter(void);
+    void BuildInterpreter(bool Force32bit);
 
     typedef void (R4300iOp::*Func)();
 
@@ -69,32 +69,58 @@ private:
     void DADDI();
     void DADDIU();
     void LDL();
+    void LDL_32();
     void LDR();
+    void LDR_32();
     void LB();
+    void LB_32();
     void LH();
+    void LH_32();
     void LWL();
+    void LWL_32();
     void LW();
+    void LW_32();
     void LBU();
+    void LBU_32();
     void LHU();
+    void LHU_32();
     void LWR();
+    void LWR_32();
     void LWU();
+    void LWU_32();
     void SB();
+    void SB_32();
     void SH();
+    void SH_32();
     void SWL();
+    void SWL_32();
     void SW();
+    void SW_32();
     void SDL();
+    void SDL_32();
     void SDR();
+    void SDR_32();
     void SWR();
+    void SWR_32();
     void CACHE();
     void LL();
+    void LL_32();
     void LWC1();
+    void LWC1_32();
     void LLD();
+    void LLD_32();
     void LDC1();
+    void LDC1_32();
     void LD();
+    void LD_32();
     void SC();
+    void SC_32();
     void SWC1();
+    void SWC1_32();
     void SDC1();
+    void SDC1_32();
     void SD();
+    void SD_32();
 
     // R4300i opcodes: Special
     void SPECIAL_SLL();
@@ -276,6 +302,9 @@ private:
     double ** m_FPR_D;
     uint32_t * m_FPCR;
     uint32_t & m_LLBit;
+    uint64_t m_InstructionRegion;
+    uint8_t * m_InstructionMemory;
+    uint32_t * m_InstructionPtr;
 
     Func Jump_Opcode[64];
     Func Jump_Special[64];
@@ -291,8 +320,8 @@ private:
     Func Jump_CoP2[32];
 
     bool TestCop1UsableException(void);
-    bool CheckFPUInput32(const float & Value);
-    bool CheckFPUInputs32(const float & Value, const float & Value2);
+    bool CheckFPUInput32(const uint32_t & Value);
+    bool CheckFPUInputs32(const uint32_t & Value, const uint32_t & Value2);
     bool CheckFPUInput32Conv(const float & Value);
     bool CheckFPUInput64(const double & Value);
     bool CheckFPUInputs64(const double & Value, const double & Value2);
@@ -302,6 +331,7 @@ private:
     bool CheckFPUInvalidException(void);
     bool InitFpuOperation(FPRoundingMode RoundingModel);
     bool SetFPUException(void);
+    void UpdateInstructionMemory();
 
     static const uint32_t SWL_MASK[4], SWR_MASK[4], LWL_MASK[4], LWR_MASK[4];
     static const int32_t SWL_SHIFT[4], SWR_SHIFT[4], LWL_SHIFT[4], LWR_SHIFT[4];

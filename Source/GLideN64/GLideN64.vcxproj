@@ -53,6 +53,15 @@
     <PreBuildEvent>
       <Command>call Source\src\getRevision.bat</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>copy /y "$(ProjectDir)Source\ini\GLideN64.ini" "$(SolutionDir)Plugin\$(Platform)\GFX\GLideN64"
+copy /y "$(ProjectDir)Source\ini\GLideN64.custom.ini" "$(SolutionDir)Plugin\$(Platform)\GFX\GLideN64"
+</Command>
+    </PostBuildEvent>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WTL_UI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)Source\projects\msvc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='Win32'">
     <ClCompile>
@@ -64,15 +73,6 @@
       <AdditionalLibraryDirectories Condition="'$(Configuration)'=='Release' And '$(MSBuildAssemblyVersion)'=='12.0'">Source/projects/msvc/lib/msvc12/rel</AdditionalLibraryDirectories>
       <AdditionalLibraryDirectories Condition="'$(Configuration)'=='Release' And '$(MSBuildAssemblyVersion)'!='12.0'">Source/projects/msvc/lib/rel</AdditionalLibraryDirectories>
     </Link>
-    <PostBuildEvent>
-      <Command>copy /y "$(ProjectDir)Source\ini\GLideN64.ini" "$(SolutionDir)Plugin\$(Platform)\GFX\GLideN64"
-copy /y "$(ProjectDir)Source\ini\GLideN64.custom.ini" "$(SolutionDir)Plugin\$(Platform)\GFX\GLideN64"
-</Command>
-    </PostBuildEvent>
-    <ResourceCompile>
-      <PreprocessorDefinitions>WTL_UI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)Source\projects\msvc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
     <Link>

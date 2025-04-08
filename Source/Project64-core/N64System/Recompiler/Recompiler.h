@@ -89,4 +89,6 @@ private:
     FUNCTION_PROFILE m_BlockProfile;
     uint64_t & PROGRAM_COUNTER;
     CLog * m_LogFile;
+    HighResTimeStamp m_RecompStartTime;
+    HighResTimeStamp m_RecompEndTime;
 };

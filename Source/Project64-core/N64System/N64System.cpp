@@ -32,7 +32,7 @@ CN64System::CN64System(CPlugins * Plugins, uint32_t randomizer_seed, bool SavesR
     //m_Cheats(m_MMU_VM),
     m_Reg(*this, m_SystemEvents),
     m_TLB(m_MMU_VM, m_Reg, m_Recomp),
-    m_OpCodes(*this),
+    m_OpCodes(*this, !SyncSystem && g_Settings->LoadDword(Game_CpuType) != CPU_Interpreter && b32BitCore()),
     m_Recomp(nullptr),
     m_InReset(false),
     m_NextTimer(0),
@@ -385,7 +385,7 @@ bool CN64System::LoadFileImage(const char * FileLoc)
             {
                 g_Settings->SaveString(File_DiskIPLPath, FileLoc);
             }
-            else if (g_DDRom->CicChipID() == CIC_NUS_DDUS)
+            else if (g_DDRom->CicChipID() == CIC_NUS_8501)
             {
                 g_Settings->SaveString(File_DiskIPLUSAPath, FileLoc);
             }
@@ -460,7 +460,7 @@ bool CN64System::LoadFileImageIPL(const char * FileLoc)
 
         if (g_DDRom->CicChipID() == CIC_NUS_8303)
             g_Settings->SaveString(File_DiskIPLPath, FileLoc);
-        else if (g_DDRom->CicChipID() == CIC_NUS_DDUS)
+        else if (g_DDRom->CicChipID() == CIC_NUS_8501)
             g_Settings->SaveString(File_DiskIPLUSAPath, FileLoc);
         else if (g_DDRom->CicChipID() == CIC_NUS_8401)
             g_Settings->SaveString(File_DiskIPLTOOLPath, FileLoc);
@@ -553,7 +553,7 @@ bool CN64System::RunFileImage(const char * FileLoc)
         {
             g_Settings->SaveString(File_DiskIPLPath, FileLoc);
         }
-        else if (g_Rom->CicChipID() == CIC_NUS_DDUS)
+        else if (g_Rom->CicChipID() == CIC_NUS_8501)
         {
             g_Settings->SaveString(File_DiskIPLUSAPath, FileLoc);
         }
@@ -1052,7 +1052,7 @@ void CN64System::ExecuteCPU()
 void CN64System::ExecuteInterpret()
 {
     SetActiveSystem();
-    m_OpCodes.ExecuteCPU();
+    m_OpCodes.ExecuteOps((uint32_t)-1);
 }
 
 void CN64System::ExecuteRecompiler()
@@ -1343,7 +1343,7 @@ void CN64System::DumpSyncErrors()
 #endif
         if (m_Reg.m_PROGRAM_COUNTER != m_SyncCPU->m_Reg.m_PROGRAM_COUNTER)
         {
-            Error.LogF("PROGRAM_COUNTER 0x%016llX,         0x%016llX\r\n", m_Reg.m_PROGRAM_COUNTER, m_SyncCPU->m_Reg.m_PROGRAM_COUNTER);
+            Error.LogF("PROGRAM_COUNTER 0x%08X%08X, 0x%08X%08X\r\n", (uint32_t)(m_Reg.m_PROGRAM_COUNTER >> 32), (uint32_t)m_Reg.m_PROGRAM_COUNTER, (uint32_t)(m_SyncCPU->m_Reg.m_PROGRAM_COUNTER >> 32), (uint32_t)m_SyncCPU->m_Reg.m_PROGRAM_COUNTER);
         }
         if (b32BitCore())
         {
@@ -1871,7 +1871,9 @@ bool CN64System::LoadState(const char * FileName)
         {
             SaveFile.SetNameExtension(stdstr_f("%s.zip", SaveFile.GetNameExtension().c_str()).c_str());
         }
-        unzFile file = unzOpen(SaveFile);
+        zlib_filefunc64_def ffunc;
+        fill_win32_filefunc64W(&ffunc);
+        unzFile file = unzOpen2_64(stdstr(std::string(SaveFile)).ToUTF16().c_str(), &ffunc);
         int port = -1;
         if (file != nullptr)
         {
@@ -1936,7 +1938,7 @@ bool CN64System::LoadState(const char * FileName)
                 {
                     uint64_t ReadProgramCounter;
                     unzReadCurrentFile(file, &ReadProgramCounter, sizeof(ReadProgramCounter));
-                    m_Reg.m_PROGRAM_COUNTER = (uint32_t)ReadProgramCounter;
+                    m_Reg.m_PROGRAM_COUNTER = (int32_t)ReadProgramCounter;
                 }
                 unzReadCurrentFile(file, m_Reg.m_GPR, sizeof(int64_t) * 32);
                 unzReadCurrentFile(file, m_Reg.m_FPR, sizeof(int64_t) * 32);

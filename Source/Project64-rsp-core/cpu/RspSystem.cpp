@@ -1,6 +1,6 @@
 #include <Project64-rsp-core/RSPDebugger.h>
 #include <Project64-rsp-core/RSPInfo.h>
-#include <Project64-rsp-core/Recompiler/RspRecompilerCPU.h>
+#include <Project64-rsp-core/Recompiler/RspRecompilerCPU-x86.h>
 #include <Project64-rsp-core/Settings/RspSettings.h>
 #include <Project64-rsp-core/cpu/RSPCpu.h>
 #include <Project64-rsp-core/cpu/RSPRegisters.h>
@@ -13,7 +13,9 @@ CRSPSystem::CRSPSystem() :
     CHleTask(*this),
     m_SyncSystem(nullptr),
     m_BaseSystem(nullptr),
+#if defined(__i386__) || defined(_M_IX86)
     m_Recompiler(*this),
+#endif
     m_RSPRegisterHandler(nullptr),
     m_Op(*this),
     m_NextInstruction(RSPPIPELINE_NORMAL),
@@ -120,6 +122,11 @@ void CRSPSystem::Reset(RSP_INFO & Info)
     {
         m_RdramSize = 0x00400000;
     }
+    if (m_RSPRegisterHandler != nullptr)
+    {
+        delete m_RSPRegisterHandler;
+        m_RSPRegisterHandler = nullptr;
+    }
     m_RSPRegisterHandler = new RSPRegisterHandlerPlugin(*this);
 
     if (m_SyncSystem != nullptr)
@@ -130,17 +137,14 @@ void CRSPSystem::Reset(RSP_INFO & Info)
 
 void CRSPSystem::RomClosed(void)
 {
-    if (m_RSPRegisterHandler != nullptr)
-    {
-        delete m_RSPRegisterHandler;
-        m_RSPRegisterHandler = nullptr;
-    }
 }
 
+#if defined(__i386__) || defined(_M_IX86)
 void CRSPSystem::RunRecompiler(void)
 {
     m_Recompiler.RunCPU();
 }
+#endif
 
 void CRSPSystem::ExecuteOps(uint32_t Cycles, uint32_t TargetPC)
 {

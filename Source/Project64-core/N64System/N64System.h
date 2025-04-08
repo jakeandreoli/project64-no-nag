@@ -47,7 +47,6 @@ public:
     CN64System(CPlugins * Plugins, uint32_t randomizer_seed, bool SavesReadOnly, bool SyncSystem);
     virtual ~CN64System(void);
 
-    bool m_EndEmulation;
     SAVE_CHIP_TYPE m_SaveUsing;
 
     // Methods
@@ -189,6 +188,7 @@ private:
     CProfiling m_CPU_Usage; // Used to track the CPU usage
     CRecompiler * m_Recomp;
     CSpeedLimiter m_Limiter;
+    bool m_EndEmulation;
     bool m_InReset;
     int32_t m_NextTimer;
     CSystemTimer m_SystemTimer;

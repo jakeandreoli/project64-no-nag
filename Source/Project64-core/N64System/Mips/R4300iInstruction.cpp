@@ -25,6 +25,11 @@ const uint64_t & R4300iInstruction::Address() const
     return m_Address;
 }
 
+const uint32_t & R4300iInstruction::Address32() const
+{
+    return m_Address32[0];
+}
+
 const R4300iOpcode & R4300iInstruction::Opcode() const
 {
     return m_Instruction;
@@ -194,7 +199,7 @@ void R4300iInstruction::ReadsGPR(uint32_t & Reg1, uint32_t & Reg2) const
     Reg2 = 0;
 }
 
-uint32_t R4300iInstruction::WritesGPR(void) const
+int32_t R4300iInstruction::WritesGPR(void) const
 {
     uint32_t op = m_Instruction.op;
     if (op == R4300i_SPECIAL)
@@ -221,7 +226,7 @@ uint32_t R4300iInstruction::WritesGPR(void) const
     {
         return 31; // RA
     }
-    return (uint32_t)-1;
+    return -1;
 }
 
 bool R4300iInstruction::ReadsHI() const

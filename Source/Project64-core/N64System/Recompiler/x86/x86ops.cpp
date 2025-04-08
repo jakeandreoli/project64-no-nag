@@ -21,30 +21,18 @@ void CX86Ops::AdcVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable, 
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        adc(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        adc(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-    }
+    adc(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
 }
 
 void CX86Ops::AddConstToVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        add(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        add(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-    }
+    add(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
 }
 
 void CX86Ops::AddConstToX86Reg(const asmjit::x86::Gp & Reg, uint32_t Const)
@@ -70,60 +58,36 @@ void CX86Ops::AddVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable, 
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        add(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        add(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-    }
+    add(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
 }
 
 void CX86Ops::AndConstToVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        and_(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        and_(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-    }
+    and_(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
 }
 
 void CX86Ops::AndVariableDispToX86Reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName, const asmjit::x86::Gp & AddrReg, Multipler Multiply)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        and_(Reg, asmjit::x86::dword_ptr((uint64_t)Variable, AddrReg, Multiply >> 1));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        and_(Reg, asmjit::x86::dword_ptr((uint64_t)Variable, AddrReg, Multiply >> 1));
-    }
+    and_(Reg, asmjit::x86::dword_ptr((uint64_t)Variable, AddrReg, Multiply >> 1));
 }
 
 void CX86Ops::AndVariableToX86Reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        and_(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        and_(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-    }
+    and_(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
 }
 
 void CX86Ops::BreakPointNotification(const char * FileName, int32_t LineNumber)
@@ -150,15 +114,9 @@ void CX86Ops::CallFunc(uint32_t FunctPtr, const char * FunctName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        stdstr_f SymbolKey("0x%X", FunctPtr);
-        AddSymbol(SymbolKey.c_str(), FunctName);
-        call((uint64_t)FunctPtr);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol(FunctPtr, FunctName);
     }
-    else
-    {
-        call((uint64_t)FunctPtr);
-    }
+    call((uint64_t)FunctPtr);
 }
 
 #ifdef _MSC_VER
@@ -180,30 +138,18 @@ void CX86Ops::CompConstByteToVariable(void * Variable, const char * VariableName
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        cmp(asmjit::x86::byte_ptr((uint64_t)Variable), Const);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        cmp(asmjit::x86::byte_ptr((uint64_t)Variable), Const);
-    }
+    cmp(asmjit::x86::byte_ptr((uint64_t)Variable), Const);
 }
 
 void CX86Ops::CompConstToVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        cmp(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        cmp(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-    }
+    cmp(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
 }
 
 void CX86Ops::CompConstToX86reg(const asmjit::x86::Gp & Reg, uint32_t Const)
@@ -222,15 +168,9 @@ void CX86Ops::CompX86regToVariable(const asmjit::x86::Gp & Reg, void * Variable,
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        cmp(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        cmp(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-    }
+    cmp(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
 }
 
 void CX86Ops::Fabs(void)
@@ -270,109 +210,172 @@ void CX86Ops::Fsub(const asmjit::x86::Mem & Mem)
 
 void CX86Ops::JaeLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jae(JumpLabel);
 }
 
 void CX86Ops::JaLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     ja(JumpLabel);
 }
 
 void CX86Ops::JbLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jb(JumpLabel);
 }
 
 void CX86Ops::JbeLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jbe(JumpLabel);
 }
 
 void CX86Ops::JecxzLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jecxz(JumpLabel);
+}
+
+void CX86Ops::JeLabel8(const char * LabelName, asmjit::Label & JumpLabel)
+{
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
+    short_().je(JumpLabel);
 }
 
 void CX86Ops::JeLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     je(JumpLabel);
 }
 
 void CX86Ops::JgeLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jge(JumpLabel);
 }
 
 void CX86Ops::JgLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jg(JumpLabel);
 }
 
 void CX86Ops::JleLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jle(JumpLabel);
 }
 
 void CX86Ops::JlLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jl(JumpLabel);
 }
 
 void CX86Ops::JmpLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jmp(JumpLabel);
 }
 
 void CX86Ops::JneLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jne(JumpLabel);
 }
 
 void CX86Ops::JnpLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jnp(JumpLabel);
 }
 
 void CX86Ops::JnsLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jns(JumpLabel);
 }
 
 void CX86Ops::JnzLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jnz(JumpLabel);
 }
 
 void CX86Ops::JsLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     js(JumpLabel);
 }
 
 void CX86Ops::JoLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jo(JumpLabel);
 }
 
 void CX86Ops::JzLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    AddSymbol(stdstr_f("L%d", JumpLabel.id()).c_str(), LabelName);
+    if (CDebugSettings::bRecordRecompilerAsm())
+    {
+        AddLabelSymbol(JumpLabel, LabelName);
+    }
     jz(JumpLabel);
 }
 
@@ -380,61 +383,37 @@ void CX86Ops::MoveConstByteToVariable(void * Variable, const char * VariableName
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        mov(asmjit::x86::byte_ptr((uint64_t)Variable), Const);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        mov(asmjit::x86::byte_ptr((uint64_t)Variable), Const);
-    }
+    mov(asmjit::x86::byte_ptr((uint64_t)Variable), Const);
 }
 
 void CX86Ops::MoveConstHalfToVariable(void * Variable, const char * VariableName, uint16_t Const)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        mov(asmjit::x86::word_ptr((uint64_t)Variable), Const);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        mov(asmjit::x86::word_ptr((uint64_t)Variable), Const);
-    }
+    mov(asmjit::x86::word_ptr((uint64_t)Variable), Const);
 }
 
 void CX86Ops::MoveConstToVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        mov(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        mov(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-    }
+    mov(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
 }
 
 void CX86Ops::MoveConst64ToVariable(void * Variable, const char * VariableName, uint64_t Const)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        mov(asmjit::x86::dword_ptr((uint64_t)Variable), (uint32_t)Const);
-        mov(asmjit::x86::dword_ptr(((uint64_t)Variable) + 4), (uint32_t)(Const >> 32));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        mov(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-    }
+    mov(asmjit::x86::dword_ptr((uint64_t)Variable), (uint32_t)Const);
+    mov(asmjit::x86::dword_ptr(((uint64_t)Variable) + 4), (uint32_t)(Const >> 32));
 }
 
 void CX86Ops::MoveConstToX86reg(const asmjit::x86::Gp & Reg, uint32_t Const)
@@ -453,332 +432,198 @@ void CX86Ops::MoveSxVariableToX86regByte(const asmjit::x86::Gp & Reg, void * Var
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        movsx(Reg, asmjit::x86::byte_ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        movsx(Reg, asmjit::x86::byte_ptr((uint64_t)Variable));
-    }
+    movsx(Reg, asmjit::x86::byte_ptr((uint64_t)Variable));
 }
 
 void CX86Ops::MoveSxVariableToX86regHalf(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        stdstr_f SymbolKey("0x%X", Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        movsx(Reg, asmjit::x86::word_ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        movsx(Reg, asmjit::x86::word_ptr((uint64_t)Variable));
-    }
+    movsx(Reg, asmjit::x86::word_ptr((uint64_t)Variable));
 }
 
 void CX86Ops::MoveVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        mov(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        mov(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-    }
+    mov(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
 }
 
 void CX86Ops::MoveVariableDispToX86Reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName, const asmjit::x86::Gp & AddrReg, Multipler Multiplier)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        mov(Reg, asmjit::x86::dword_ptr((uint64_t)Variable, AddrReg, Multiplier >> 1));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        mov(Reg, asmjit::x86::dword_ptr((uint64_t)Variable, AddrReg, Multiplier >> 1));
-    }
+    mov(Reg, asmjit::x86::dword_ptr((uint64_t)Variable, AddrReg, Multiplier >> 1));
 }
 
 void CX86Ops::MoveX86regByteToVariable(void * Variable, const char * VariableName, const asmjit::x86::Gp & Reg)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        mov(asmjit::x86::byte_ptr((uint64_t)(Variable)), Reg.r8());
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        mov(asmjit::x86::byte_ptr((uint64_t)(Variable)), Reg.r8());
-    }
+    mov(asmjit::x86::byte_ptr((uint64_t)(Variable)), Reg.r8());
 }
 
 void CX86Ops::MoveX86regHalfToVariable(void * Variable, const char * VariableName, const asmjit::x86::Gp & Reg)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        mov(asmjit::x86::word_ptr((uint64_t)(Variable)), Reg.r16());
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        mov(asmjit::x86::word_ptr((uint64_t)(Variable)), Reg.r16());
-    }
+    mov(asmjit::x86::word_ptr((uint64_t)(Variable)), Reg.r16());
 }
 
 void CX86Ops::MoveX86regToVariable(void * Variable, const char * VariableName, const asmjit::x86::Gp & Reg)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        mov(asmjit::x86::dword_ptr((uint64_t)(Variable)), Reg);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        mov(asmjit::x86::dword_ptr((uint64_t)(Variable)), Reg);
-    }
+    mov(asmjit::x86::dword_ptr((uint64_t)(Variable)), Reg);
 }
 
 void CX86Ops::MoveZxVariableToX86regByte(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        stdstr_f SymbolKey("0x%X", Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        movzx(Reg, asmjit::x86::byte_ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        movzx(Reg, asmjit::x86::byte_ptr((uint64_t)Variable));
-    }
+    movzx(Reg, asmjit::x86::byte_ptr((uint64_t)Variable));
 }
 
 void CX86Ops::MoveZxVariableToX86regHalf(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        stdstr_f SymbolKey("0x%X", Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        movzx(Reg, asmjit::x86::word_ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        movzx(Reg, asmjit::x86::word_ptr((uint64_t)Variable));
-    }
+    movzx(Reg, asmjit::x86::word_ptr((uint64_t)Variable));
 }
 
 void CX86Ops::OrConstToVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        stdstr_f SymbolKey("0x%X", Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        or_(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        or_(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-    }
+    or_(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
 }
 
 void CX86Ops::OrVariableToX86Reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        stdstr_f SymbolKey("0x%X", Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        or_(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        or_(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-    }
+    or_(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
 }
 
 void CX86Ops::OrX86RegToVariable(void * Variable, const char * VariableName, const asmjit::x86::Gp & Reg)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        stdstr_f SymbolKey("0x%X", Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        or_(asmjit::x86::dword_ptr((uint64_t)Variable), Reg);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        or_(asmjit::x86::dword_ptr((uint64_t)Variable), Reg);
-    }
+    or_(asmjit::x86::dword_ptr((uint64_t)Variable), Reg);
 }
 
 void CX86Ops::PushImm32(const char * String, uint32_t Value)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        stdstr_f SymbolKey("0x%X", Value);
-        AddSymbol(SymbolKey.c_str(), String);
-        push(Value);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol(Value, String);
     }
-    else
-    {
-        push(Value);
-    }
+    push(Value);
 }
 
 void CX86Ops::SetaVariable(void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        seta(asmjit::x86::byte_ptr((uint32_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        seta(asmjit::x86::byte_ptr((uint32_t)Variable));
-    }
+    seta(asmjit::x86::byte_ptr((uint32_t)Variable));
 }
 
 void CX86Ops::SetbVariable(void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        setb(asmjit::x86::byte_ptr((uint32_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        setb(asmjit::x86::byte_ptr((uint32_t)Variable));
-    }
+    setb(asmjit::x86::byte_ptr((uint32_t)Variable));
 }
 
 void CX86Ops::SetgVariable(void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        setg(asmjit::x86::byte_ptr((uint32_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        setg(asmjit::x86::byte_ptr((uint32_t)Variable));
-    }
+    setg(asmjit::x86::byte_ptr((uint32_t)Variable));
 }
 
 void CX86Ops::SetlVariable(void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        setl(asmjit::x86::byte_ptr((uint32_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        setl(asmjit::x86::byte_ptr((uint32_t)Variable));
-    }
+    setl(asmjit::x86::byte_ptr((uint32_t)Variable));
 }
 
 void CX86Ops::SbbVariableFromX86reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        sbb(Reg, asmjit::x86::dword_ptr((uint32_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        sbb(Reg, asmjit::x86::dword_ptr((uint32_t)Variable));
-    }
+    sbb(Reg, asmjit::x86::dword_ptr((uint32_t)Variable));
 }
 
 void CX86Ops::SubConstFromVariable(uint32_t Const, void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        sub(asmjit::x86::dword_ptr((uint32_t)Variable), Const);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        sub(asmjit::x86::dword_ptr((uint32_t)Variable), Const);
-    }
+    sub(asmjit::x86::dword_ptr((uint32_t)Variable), Const);
 }
 
 void CX86Ops::SubVariableFromX86reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        sub(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        sub(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-    }
+    sub(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
 }
 
 void CX86Ops::TestVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        test(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        test(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
-    }
+    test(asmjit::x86::dword_ptr((uint64_t)Variable), Const);
 }
 
 void CX86Ops::XorVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        xor_(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        xor_(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
-    }
+    xor_(Reg, asmjit::x86::dword_ptr((uint64_t)Variable));
 }
 
 void CX86Ops::fpuCompp(int32_t & StackPos)
@@ -797,15 +642,9 @@ void CX86Ops::fpuLoadControl(void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        fldcw(asmjit::x86::ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        fldcw(asmjit::x86::ptr((uint64_t)Variable));
-    }
+    fldcw(asmjit::x86::ptr((uint64_t)Variable));
 }
 
 void CX86Ops::fpuLoadDwordFromX86Reg(int32_t & StackPos, const asmjit::x86::Gp & x86reg)
@@ -854,15 +693,9 @@ void CX86Ops::fpuStoreControl(void * Variable, const char * VariableName)
 {
     if (CDebugSettings::bRecordRecompilerAsm())
     {
-        std::string SymbolKey = VariableSymbol(Variable);
-        AddSymbol(SymbolKey.c_str(), VariableName);
-        fnstcw(asmjit::x86::ptr((uint64_t)Variable));
-        RemoveSymbol(SymbolKey.c_str());
+        AddNumberSymbol((uint32_t)Variable, VariableName);
     }
-    else
-    {
-        fnstcw(asmjit::x86::ptr((uint64_t)Variable));
-    }
+    fnstcw(asmjit::x86::ptr((uint64_t)Variable));
 }
 
 void CX86Ops::fpuStoreDwordFromX86Reg(int32_t & StackPos, const asmjit::x86::Gp & x86reg, bool pop)
@@ -1049,35 +882,113 @@ asmjit::Error CX86Ops::_log(const char * data, size_t size) noexcept
 {
     stdstr AsmjitLog(std::string(data, size));
     AsmjitLog.Trim("\n");
-    for (SymbolMap::const_iterator itr = m_Symbols.begin(); itr != m_Symbols.end(); itr++)
+    std::string::size_type Pos = AsmjitLog.find("0x");
+    if (m_NumberSymbols.size() > 0 && Pos != std::string::npos)
     {
-        AsmjitLog.Replace(itr->first, itr->second);
+        uint32_t Value = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            char c = AsmjitLog[Pos + 2 + i];
+            if (c >= '0' && c <= '9')
+            {
+                Value = (Value << 4) | (c - '0');
+            }
+            else if (c >= 'a' && c <= 'f')
+            {
+                Value = (Value << 4) | (c - 'a' + 10);
+            }
+            else if (c >= 'A' && c <= 'F')
+            {
+                Value = (Value << 4) | (c - 'A' + 10);
+            }
+            else
+            {
+                break;
+            }
+        }
+        NumberSymbolMap::iterator itr = m_NumberSymbols.find(Value);
+        if (itr != m_NumberSymbols.end())
+        {
+            std::string::size_type endPos = Pos + 2;
+            for (std::string::size_type LenSize = AsmjitLog.length(); (endPos < LenSize && isxdigit((unsigned char)AsmjitLog[endPos])); endPos++)
+            {
+            }
+            std::string hexStr = AsmjitLog.substr(Pos, endPos - Pos);
+            AsmjitLog.replace(Pos, hexStr.length(), itr->second.Symbol);
+            itr->second.Count -= 1;
+            if (itr->second.Count == 0)
+            {
+                m_NumberSymbols.erase(itr);
+            }
+        }
+    }
+    Pos = AsmjitLog.find("L");
+    if (m_LabelSymbols.size() > 0 && Pos != std::string::npos)
+    {
+        size_t len = AsmjitLog.length();
+        uint32_t Value = 0;
+        for (int i = 0; i < 8 && (Pos + 1 + i) < len; i++)
+        {
+            char c = AsmjitLog[Pos + 1 + i];
+            if (c >= '0' && c <= '9')
+            {
+                Value = (Value * 10) + (c - '0');
+            }
+            else
+            {
+                break;
+            }
+        }
+        NumberSymbolMap::iterator itr = m_LabelSymbols.find(Value);
+        if (itr != m_LabelSymbols.end())
+        {
+            std::string::size_type endPos = Pos + 1;
+            for (std::string::size_type LenSize = AsmjitLog.length(); (endPos < LenSize && isdigit((unsigned char)AsmjitLog[endPos])); endPos++)
+            {
+            }
+            std::string LabelStr = AsmjitLog.substr(Pos, endPos - Pos);
+            AsmjitLog.replace(Pos, LabelStr.length(), itr->second.Symbol);
+            itr->second.Count -= 1;
+            if (itr->second.Count == 0)
+            {
+                m_LabelSymbols.erase(itr);
+            }
+        }
     }
     m_CodeBlock.Log("      %s", AsmjitLog.c_str());
     return asmjit::kErrorOk;
 }
 
-void CX86Ops::AddSymbol(const char * SymbolKey, const char * SymbolValue)
+void CX86Ops::AddLabelSymbol(const asmjit::Label & Label, const char * Symbol)
 {
-    m_Symbols.emplace(std::make_pair(SymbolKey, SymbolValue));
-}
-
-void CX86Ops::RemoveSymbol(const char * SymbolKey)
-{
-    SymbolMap::iterator itr = m_Symbols.find(SymbolKey);
-    if (itr != m_Symbols.end())
+    NumberSymbolMap::iterator itr = m_LabelSymbols.find(Label.id());
+    if (itr != m_LabelSymbols.end())
     {
-        m_Symbols.erase(itr);
+        if (strcmp(itr->second.Symbol.c_str(), Symbol) == 0)
+        {
+            itr->second.Count += 2;
+        }
+        else
+        {
+            __debugbreak();
+        }
+    }
+    else
+    {
+        m_LabelSymbols.emplace(std::make_pair(Label.id(), NumberSymbol{Symbol, 2}));
     }
 }
 
-std::string CX86Ops::VariableSymbol(void * Variable) const
+void CX86Ops::AddNumberSymbol(uint32_t Value, const char * Symbol)
 {
-    if (int64_t(Variable) < 0)
+    NumberSymbolMap::iterator itr = m_NumberSymbols.find(Value);
+    if (itr != m_NumberSymbols.end())
     {
-        return stdstr_f("-0x%0X", (uint32_t)(~(int64_t(Variable)) + 1));
+        itr->second.Count += 1;
     }
-    return stdstr_f("0x%X", (uint32_t)Variable);
+    else
+    {
+        m_NumberSymbols.emplace(std::make_pair(Value, NumberSymbol{Symbol, 1}));
+    }
 }
-
 #endif

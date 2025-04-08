@@ -59,11 +59,13 @@ public:
         FPU_Any = -1,
         FPU_Unknown = 0,
         FPU_Dword = 1,
-        FPU_Qword = 2,
-        FPU_Float = 3,
-        FPU_FloatLow = 4,
-        FPU_Double = 5,
-        FPU_UnsignedDoubleWord = 6,
+        FPU_DwordLow = 2,
+        FPU_Qword = 3,
+        FPU_Float = 4,
+        FPU_FloatLow = 5,
+        FPU_Double = 6,
+        FPU_DoubleWord = 7,
+        FPU_UnsignedDoubleWord = 8,
     };
 
     CX86RegInfo(CCodeBlock & CodeBlock, CX86Ops & Assembler);
@@ -97,7 +99,7 @@ public:
     void Map_GPR_64bit(int32_t MipsReg, int32_t MipsRegToLoad);
     asmjit::x86::Gp Map_FPStatusReg();
     asmjit::x86::Gp Get_MemoryStack() const;
-    asmjit::x86::Gp Map_MemoryStack(asmjit::x86::Gp Reg, bool bMapRegister, bool LoadValue = true);
+    asmjit::x86::Gp Map_MemoryStack(const asmjit::x86::Gp & Reg, bool bMapRegister, bool LoadValue = true);
     asmjit::x86::Gp Map_TempReg(asmjit::x86::Gp Reg, int32_t MipsReg, bool LoadHiWord, bool Reg8Bit);
     void ProtectGPR(uint32_t MipsReg);
     void UnProtectGPR(uint32_t MipsReg);
@@ -108,11 +110,11 @@ public:
     bool UnMap_X86reg(const asmjit::x86::Gp & Reg);
     void WriteBackRegisters();
 
-    asmjit::x86::Gp GetMipsRegMapLo(int32_t Reg) const
+    const asmjit::x86::Gp & GetMipsRegMapLo(int32_t Reg) const
     {
         return m_RegMapLo[Reg];
     }
-    asmjit::x86::Gp GetMipsRegMapHi(int32_t Reg) const
+    const asmjit::x86::Gp & GetMipsRegMapHi(int32_t Reg) const
     {
         return m_RegMapHi[Reg];
     }

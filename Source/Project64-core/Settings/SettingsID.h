@@ -76,6 +76,7 @@ enum SettingID
     Default_FixedAudio,
     Default_RandomizeSIPIInterrupts,
     Default_DiskSeekTiming,
+    Default_OverClockModifier,
 
     // RDB settings
     Rdb_GoodName,
@@ -115,6 +116,7 @@ enum SettingID
     Rdb_RandomizeSIPIInterrupts,
     Rdb_RPCKey,
     Rdb_DiskSeekTiming,
+    Rdb_OverClockModifier,
 
     // Individual game settings
     Game_IniKey,
@@ -268,6 +270,8 @@ enum SettingID
     Debugger_IntrBreakpoints,
     Debugger_RcpIntrBreakpoints,
     Debugger_AutorunScripts,
+    Debugger_TrackCPUStepStarted,
+    Debugger_TrackCPUStepEnded,
 
     // Trace
     Debugger_TraceMD5,

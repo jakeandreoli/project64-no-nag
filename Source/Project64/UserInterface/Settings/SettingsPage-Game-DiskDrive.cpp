@@ -11,7 +11,7 @@ CGameDiskDrivePage::CGameDiskDrivePage(HWND hParent, const RECT & rcDispay)
     }
 
     // Set the text for all GUI items
-    SetDlgItemText(IDC_DISKSEEKTIMING_TEXT2, wGS(ROM_DISK_SEEK_TIMING).c_str());
+    SetDlgItemText(IDC_DISKSEEKTIMING_TEXT, wGS(ROM_DISK_SEEK_TIMING).c_str());
 
     CModifiedComboBox * ComboBox;
     ComboBox = AddModComboBox(GetDlgItem(IDC_DISKSEEKTIMING2), Game_DiskSeekTiming);

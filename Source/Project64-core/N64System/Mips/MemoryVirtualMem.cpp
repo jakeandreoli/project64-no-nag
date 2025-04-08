@@ -870,9 +870,7 @@ bool CMipsMemoryVM::SH_PhysicalAddress(uint32_t PAddr, uint32_t Value)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
-        return false;
     }
-
     return true;
 }
 
@@ -960,7 +958,6 @@ bool CMipsMemoryVM::SD_PhysicalAddress(uint32_t PAddr, uint64_t Value)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
-        return false;
     }
     return true;
 }

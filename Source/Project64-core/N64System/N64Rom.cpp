@@ -136,7 +136,9 @@ bool CN64Rom::AllocateAndLoadN64Image(const char * FileLoc, bool LoadBootCodeOnl
 
 bool CN64Rom::AllocateAndLoadZipImage(const char * FileLoc, bool LoadBootCodeOnly)
 {
-    unzFile file = unzOpen(FileLoc);
+    zlib_filefunc64_def ffunc;
+    fill_win32_filefunc64W(&ffunc);
+    unzFile file = unzOpen2_64(stdstr(FileLoc).ToUTF16().c_str(), &ffunc);
     if (file == nullptr)
     {
         return false;
@@ -290,6 +292,9 @@ CICChip CN64Rom::GetCicChipID(uint8_t * RomData, uint64_t * CRC)
     {
     case 0x000000D0027FDF31: return CIC_NUS_6101;
     case 0x000000CFFB631223: return CIC_NUS_6101;
+    case 0x000000C34B2826B8: return CIC_NUS_6101; // iQue
+    case 0x0000002F35CF0DE9: return CIC_NUS_6101; // iQue (Paper Mario)
+    case 0x000000C92ADFE50A: return CIC_NUS_6101; // iQue (Sin and Punishment)
     case 0x000000D057C85244: return CIC_NUS_6102;
     case 0x000000D6497E414B: return CIC_NUS_6103;
     case 0x0000011A49F60E96: return CIC_NUS_6105;
@@ -297,7 +302,7 @@ CICChip CN64Rom::GetCicChipID(uint8_t * RomData, uint64_t * CRC)
     case 0x000001053BC19870: return CIC_NUS_5167; // 64DD conversion CIC
     case 0x000000D2E53EF008: return CIC_NUS_8303; // 64DD IPL
     case 0x000000D2E53EF39F: return CIC_NUS_8401; // 64DD IPL tool
-    case 0x000000D2E53E5DDA: return CIC_NUS_DDUS; // 64DD IPL US (different CIC)
+    case 0x000000D2E53E5DDA: return CIC_NUS_8501; // 64DD IPL US (different CIC)
     case 0x0000000AF3A34BC8: return CIC_MINI_IPL3;
     case 0x0000007c56242373: return CIC_NUS_6102; // LibDragon IPL3
     default:
@@ -361,7 +366,7 @@ void CN64Rom::CalculateRomCrc()
     case CIC_NUS_6103: v0 = 0xA3886759; break;
     case CIC_NUS_6105: v0 = 0xDF26F436; break;
     case CIC_NUS_6106: v0 = 0x1FEA617A; break;
-    case CIC_NUS_DDUS:
+    case CIC_NUS_8501:
         length = 0x000A0000;
         v0 = 0x861AE3A7;
         break;
@@ -403,7 +408,7 @@ void CN64Rom::CalculateRomCrc()
 
         if (v1 < a3)
         {
-            if (m_CicChip == CIC_NUS_DDUS || m_CicChip == CIC_NUS_8303)
+            if (m_CicChip == CIC_NUS_8501 || m_CicChip == CIC_NUS_8303)
             {
                 t2 = t2 ^ t3;
             }
@@ -497,7 +502,7 @@ bool CN64Rom::IsLoadedRomDDIPL()
     switch (CicChipID())
     {
     case CIC_NUS_8303:
-    case CIC_NUS_DDUS:
+    case CIC_NUS_8501:
     case CIC_NUS_8401:
         return true;
     default:

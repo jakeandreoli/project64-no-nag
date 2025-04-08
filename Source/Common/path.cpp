@@ -1001,7 +1001,16 @@ bool CPath::Exists() const
 bool CPath::SelectFile(void * hwndOwner, const char * InitialDir, const char * FileFilter, bool FileMustExist)
 {
     CPath CurrentDir(CURRENT_DIRECTORY);
-    std::wstring FileFilterW = stdstr(FileFilter).ToUTF16();
+
+    size_t FilterLen = 0;
+    while (FileFilter[FilterLen] != '\0' || FileFilter[FilterLen + 1] != '\0')
+    {
+        FilterLen++;
+    }
+    FilterLen += 2;
+
+    std::vector<wchar_t> FileFilterW(FilterLen);
+    MultiByteToWideChar(CP_UTF8, 0, FileFilter, (int)FilterLen, FileFilterW.data(), static_cast<int>(FilterLen));
     std::wstring InitialDirW = stdstr(InitialDir).ToUTF16();
 
     OPENFILENAME openfilename;
@@ -1011,7 +1020,7 @@ bool CPath::SelectFile(void * hwndOwner, const char * InitialDir, const char * F
 
     openfilename.lStructSize = sizeof(openfilename);
     openfilename.hwndOwner = (HWND)hwndOwner;
-    openfilename.lpstrFilter = FileFilterW.c_str();
+    openfilename.lpstrFilter = FileFilterW.data();
     openfilename.lpstrFile = FileName;
     openfilename.lpstrInitialDir = InitialDirW.c_str();
     openfilename.nMaxFile = MAX_PATH;

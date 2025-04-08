@@ -807,9 +807,9 @@ void CRomBrowser::RomList_GetDispInfo(LPARAM pnmh)
         {
             swprintf(lpdi->item.pszText, lpdi->item.cchTextMax / sizeof(wchar_t), L"CIC-NUS-5167");
         }
-        else if (pRomInfo->CicChip == CIC_NUS_DDUS)
+        else if (pRomInfo->CicChip == CIC_NUS_8501)
         {
-            swprintf(lpdi->item.pszText, lpdi->item.cchTextMax / sizeof(wchar_t), L"CIC-NUS-????");
+            swprintf(lpdi->item.pszText, lpdi->item.cchTextMax / sizeof(wchar_t), L"CIC-NUS-8501");
         }
         else if (pRomInfo->CicChip == CIC_NUS_8401)
         {
@@ -1089,7 +1089,6 @@ void CRomBrowser::SelectRomDir(void)
 
     std::wstring title = wGS(SELECT_ROM_DIR);
 
-    WriteTrace(TraceUserInterface, TraceDebug, "1");
     stdstr RomDir = g_Settings->LoadStringVal(RomList_GameDir).c_str();
     bi.hwndOwner = m_MainWindow;
     bi.pidlRoot = nullptr;
@@ -1098,28 +1097,15 @@ void CRomBrowser::SelectRomDir(void)
     bi.ulFlags = BIF_RETURNFSANCESTORS | BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
     bi.lpfn = (BFFCALLBACK)SelectRomDirCallBack;
     bi.lParam = (UINT_PTR)RomDir.c_str();
-    WriteTrace(TraceUserInterface, TraceDebug, "2");
     if ((pidl = SHBrowseForFolder(&bi)) != nullptr)
     {
-        WriteTrace(TraceUserInterface, TraceDebug, "3");
-        char Directory[_MAX_PATH];
-        if (SHGetPathFromIDListA(pidl, Directory))
+        wchar_t Directory[_MAX_PATH];
+        if (SHGetPathFromIDList(pidl, Directory))
         {
-            int32_t len = (int32_t)((UINT_PTR)strlen(Directory));
-
-            WriteTrace(TraceUserInterface, TraceDebug, "4");
-            if (Directory[len - 1] != '\\')
-            {
-                strcat(Directory, "\\");
-            }
-            WriteTrace(TraceUserInterface, TraceDebug, "5");
-            WriteTrace(TraceUserInterface, TraceDebug, "6");
-            g_Settings->SaveString(RomList_GameDir, Directory);
-            WriteTrace(TraceUserInterface, TraceDebug, "7");
-            Notify().AddRecentDir(Directory);
-            WriteTrace(TraceUserInterface, TraceDebug, "8");
+            CPath NewRomDir(stdstr().FromUTF16(Directory), "");
+            g_Settings->SaveString(RomList_GameDir, NewRomDir.GetDriveDirectory());
+            Notify().AddRecentDir(NewRomDir.GetDriveDirectory().c_str());
             RefreshRomList();
-            WriteTrace(TraceUserInterface, TraceDebug, "9");
         }
     }
 }

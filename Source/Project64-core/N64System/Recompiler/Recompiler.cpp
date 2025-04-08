@@ -85,14 +85,14 @@ void CRecompiler::RecompilerMain_VirtualTable()
             m_System.m_PipelineStage = PIPELINE_STAGE_NORMAL;
             if (!m_MMU.ValidVaddr((uint32_t)PC))
             {
-                g_Notify->DisplayError(stdstr_f("Failed to translate PC to a PAddr: %X\n\nEmulation stopped", PC).c_str());
+                g_Notify->DisplayError(stdstr_f("Failed to translate PC to a PAddr: %X\n\nEmulation stopped", (uint32_t)PC).c_str());
                 return;
             }
             continue;
         }
 
-        PCCompiledFunc_TABLE & table = FunctionTable()[PC >> 0xC];
-        uint32_t TableEntry = (PC & 0xFFF) >> 2;
+        PCCompiledFunc_TABLE & table = FunctionTable()[(uint32_t)PC >> 0xC];
+        uint32_t TableEntry = ((uint32_t)PC & 0xFFF) >> 2;
         if (table)
         {
             CCompiledFunc * info = table[TableEntry];
@@ -138,13 +138,13 @@ void CRecompiler::RecompilerMain_Lookup()
         if (!m_MMU.VAddrToPAddr((uint32_t)PROGRAM_COUNTER, PhysicalAddr))
         {
             m_Reg.TriggerAddressException(PROGRAM_COUNTER, EXC_RMISS);
+            PROGRAM_COUNTER = m_System.m_JumpToLocation;
+            m_System.m_PipelineStage = PIPELINE_STAGE_NORMAL;
             if (!m_MMU.VAddrToPAddr((uint32_t)PROGRAM_COUNTER, PhysicalAddr))
             {
                 g_Notify->DisplayError(stdstr_f("Failed to translate PC to a PAddr: %X\n\nEmulation stopped", PROGRAM_COUNTER).c_str());
                 m_EndEmulation = true;
             }
-            PROGRAM_COUNTER = m_System.m_JumpToLocation;
-            m_System.m_PipelineStage = PIPELINE_STAGE_NORMAL;
             continue;
         }
         if (PhysicalAddr < m_System.RdramSize())
@@ -328,8 +328,11 @@ void CRecompiler::RecompilerMain_ChangeMemory()
 
 CCompiledFunc * CRecompiler::CompileCode()
 {
-    WriteTrace(TraceRecompiler, TraceDebug, "Start (PC: %016llX)", PROGRAM_COUNTER);
-
+    if (g_ModuleLogLevel[TraceRecompiler] >= TraceDebug)
+    {
+        WriteTrace(TraceRecompiler, TraceDebug, "Start (PC: %016llX)", PROGRAM_COUNTER);
+        m_RecompStartTime.SetToNow();
+    }
     uint32_t pAddr = 0;
     if (!m_MMU.VAddrToPAddr((uint32_t)PROGRAM_COUNTER, pAddr))
     {
@@ -392,33 +395,15 @@ CCompiledFunc * CRecompiler::CompileCode()
 
 #if defined(__aarch64__) || defined(__amd64__) || defined(_M_X64)
     g_Notify->BreakPoint(__FILE__, __LINE__);
-#else
+#endif
     if (g_ModuleLogLevel[TraceRecompiler] >= TraceDebug)
     {
-        WriteTrace(TraceRecompiler, TraceDebug, "Info->Function() = %X", Func->Function());
-        std::string dumpline;
-        uint32_t start_address = (uint32_t)(Func->Function()) & ~1;
-        for (uint8_t *ptr = (uint8_t *)start_address, *ptr_end = ((uint8_t *)start_address) + CodeLen; ptr < ptr_end; ptr++)
-        {
-            if (dumpline.empty())
-            {
-                dumpline += stdstr_f("%X: ", ptr);
-            }
-            dumpline += stdstr_f(" %02X", *ptr);
-            if ((((uint32_t)ptr - start_address) + 1) % 30 == 0)
-            {
-                WriteTrace(TraceRecompiler, TraceDebug, "%s", dumpline.c_str());
-                dumpline.clear();
-            }
-        }
-
-        if (!dumpline.empty())
-        {
-            WriteTrace(TraceRecompiler, TraceDebug, "%s", dumpline.c_str());
-        }
+        m_RecompEndTime.SetToNow();
+        uint32_t TimeTakenMicroseconds = (uint32_t)(m_RecompEndTime.GetMicroSeconds() - m_RecompStartTime.GetMicroSeconds());
+        uint32_t seconds = TimeTakenMicroseconds / 1000000;
+        uint32_t microseconds = TimeTakenMicroseconds % 1000000;
+        WriteTrace(TraceRecompiler, TraceDebug, "Done (TimeTaken: %u.%06u seconds)", seconds, microseconds);
     }
-#endif
-    WriteTrace(TraceRecompiler, TraceVerbose, "Done");
     return Func;
 }
 

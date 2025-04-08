@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "SettingsType-RomDatabase.h"
+#include <Common/path.h>
 
 CIniFile * CSettingTypeRomDatabase::m_SettingsIniFile = nullptr;
 CIniFile * CSettingTypeRomDatabase::m_VideoIniFile = nullptr;
@@ -59,9 +60,9 @@ void CSettingTypeRomDatabase::Initialize(void)
 {
     WriteTrace(TraceAppInit, TraceDebug, "Start");
 
-    m_SettingsIniFile = new CIniFile(g_Settings->LoadStringVal(SupportFile_RomDatabase).c_str());
-    m_VideoIniFile = new CIniFile(g_Settings->LoadStringVal(SupportFile_VideoRDB).c_str());
-    m_AudioIniFile = new CIniFile(g_Settings->LoadStringVal(SupportFile_AudioRDB).c_str());
+    m_SettingsIniFile = new CIniFile(CPath(g_Settings->LoadStringVal(SupportFile_RomDatabase).c_str()).NormalizePath(CPath(CPath::MODULE_DIRECTORY)));
+    m_VideoIniFile = new CIniFile(CPath(g_Settings->LoadStringVal(SupportFile_VideoRDB).c_str()).NormalizePath(CPath(CPath::MODULE_DIRECTORY)));
+    m_AudioIniFile = new CIniFile(CPath(g_Settings->LoadStringVal(SupportFile_AudioRDB).c_str()).NormalizePath(CPath(CPath::MODULE_DIRECTORY)));
 
     g_Settings->RegisterChangeCB(Game_IniKey, nullptr, GameChanged);
     g_Settings->RegisterChangeCB(Cmd_BaseDirectory, nullptr, BaseDirChanged);

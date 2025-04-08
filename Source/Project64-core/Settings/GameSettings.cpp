@@ -99,9 +99,9 @@ void CGameSettings::RefreshGameSettings()
     {
         m_OverClockModifier = 1;
     }
-    if (m_OverClockModifier > 20)
+    if (m_OverClockModifier > 100)
     {
-        m_OverClockModifier = 20;
+        m_OverClockModifier = 100;
     }
     m_DiskSeekTimingType = (DISK_SEEK_TYPE)g_Settings->LoadDword(Game_DiskSeekTiming);
     m_UnalignedDMA = g_Settings->LoadBool(Game_UnalignedDMA);
@@ -137,9 +137,9 @@ void CGameSettings::SetOverClockModifier(bool EnhancmentOverClock, uint32_t Enha
     {
         m_OverClockModifier = 1;
     }
-    if (m_OverClockModifier > 20)
+    if (m_OverClockModifier > 100)
     {
-        m_OverClockModifier = 20;
+        m_OverClockModifier = 100;
     }
 }
 

@@ -141,6 +141,7 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Default_FixedAudio, new CSettingTypeApplication("Defaults", "Fixed Audio", true));
     AddHandler(Default_RandomizeSIPIInterrupts, new CSettingTypeApplication("Defaults", "Randomize SI/PI Interrupts", true));
     AddHandler(Default_DiskSeekTiming, new CSettingTypeApplication("Defaults", "Disk Seek Timing", (uint32_t)DiskSeek_Turbo));
+    AddHandler(Default_OverClockModifier, new CSettingTypeApplication("Defaults", "OverClockModifier", (uint32_t)1));
 
     AddHandler(Rdb_GoodName, new CSettingTypeRomDatabase("Good Name", Game_GameName));
     AddHandler(Rdb_RPCKey, new CSettingTypeRomDatabase("RPC Key", Game_RPCKey));
@@ -183,6 +184,7 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Rdb_UnalignedDMA, new CSettingTypeRomDatabase("Unaligned DMA", false));
     AddHandler(Rdb_RandomizeSIPIInterrupts, new CSettingTypeRomDatabase("Randomize SI/PI Interrupts", Default_RandomizeSIPIInterrupts));
     AddHandler(Rdb_DiskSeekTiming, new CSettingTypeRomDatabase("DiskSeekTiming", Default_DiskSeekTiming));
+    AddHandler(Rdb_OverClockModifier, new CSettingTypeRomDatabase("OverClockModifier", Default_OverClockModifier));
 
     AddHandler(Game_IniKey, new CSettingTypeTempString(""));
     AddHandler(Game_File, new CSettingTypeTempString(""));
@@ -239,7 +241,7 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Game_Transferpak_ROM, new CSettingTypeGame("Tpak-ROM-dir", Default_None));
     AddHandler(Game_Transferpak_Sav, new CSettingTypeGame("Tpak-Sav-dir", Default_None));
     AddHandler(Game_LoadSaveAtStart, new CSettingTypeTempBool(false));
-    AddHandler(Game_OverClockModifier, new CSettingTypeGame("OverClockModifier", (uint32_t)1));
+    AddHandler(Game_OverClockModifier, new CSettingTypeGame("OverClockModifier", Rdb_OverClockModifier));
     AddHandler(Game_FullSpeed, new CSettingTypeTempBool(true, "Full Speed"));
     AddHandler(Game_UnalignedDMA, new CSettingTypeGame("Unaligned DMA", Rdb_UnalignedDMA));
     AddHandler(Game_RandomizeSIPIInterrupts, new CSettingTypeGame("Randomize SI/PI Interrupts", Rdb_RandomizeSIPIInterrupts));
@@ -281,12 +283,12 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
 
     AddHandler(Directory_Texture, new CSettingTypeSelectedDirectory("Dir:Texture", Directory_TextureInitial, Directory_TextureSelected, Directory_TextureUseSelected, Directory_Texture));
     AddHandler(Directory_TextureInitial, new CSettingTypeRelativePath("Textures", ""));
-    AddHandler(Directory_TextureSelected, new CSettingTypeApplicationPath("Texture Directory", "Directory", Directory_InstantSaveInitial));
+    AddHandler(Directory_TextureSelected, new CSettingTypeApplicationPath("Texture Directory", "Directory", Directory_TextureInitial));
     AddHandler(Directory_TextureUseSelected, new CSettingTypeApplication("Texture Directory", "Use Selected", false));
 
     AddHandler(Directory_Log, new CSettingTypeSelectedDirectory("Dir:Log", Directory_LogInitial, Directory_LogSelected, Directory_LogUseSelected, Directory_Log));
     AddHandler(Directory_LogInitial, new CSettingTypeRelativePath("Logs", ""));
-    AddHandler(Directory_LogSelected, new CSettingTypeApplicationPath("Log Directory", "Directory", Directory_InstantSaveInitial));
+    AddHandler(Directory_LogSelected, new CSettingTypeApplicationPath("Log Directory", "Directory", Directory_LogInitial));
     AddHandler(Directory_LogUseSelected, new CSettingTypeApplication("Log Directory", "Use Selected", false));
 
     AddHandler(RomList_RomListCacheDefault, new CSettingTypeRelativePath("Config", "Project64.cache3"));
@@ -342,6 +344,8 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Debugger_AppLogFlush, new CSettingTypeApplication("Logging", "Log Auto Flush", (uint32_t) false));
     AddHandler(Debugger_RecordRecompilerAsm, new CSettingTypeApplication("Debugger", "Record Recompiler Asm", false));
     AddHandler(Debugger_AutorunScripts, new CSettingTypeApplication("Debugger", "Autorun Scripts", ""));
+    AddHandler(Debugger_TrackCPUStepStarted, new CSettingTypeTempBool(false));
+    AddHandler(Debugger_TrackCPUStepEnded, new CSettingTypeTempBool(false));
 
     // Logging
     AddHandler(Debugger_TraceMD5, new CSettingTypeApplication("Logging", "MD5", (uint32_t)g_ModuleLogLevel[TraceMD5]));
@@ -420,8 +424,8 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Logging_LogExceptions, new CSettingTypeApplication("Logging", "Log Exceptions", false));
     AddHandler(Logging_NoInterrupts, new CSettingTypeApplication("Logging", "No Interrupts", false));
     AddHandler(Logging_LogCache, new CSettingTypeApplication("Logging", "Log Cache", false));
-    AddHandler(Logging_LogRomHeader, new CSettingTypeApplication("Logging", "Generate Log Files", false));
-    AddHandler(Logging_LogUnknown, new CSettingTypeApplication("Logging", "Log Rom Header", false));
+    AddHandler(Logging_LogRomHeader, new CSettingTypeApplication("Logging", "Log Rom Header", false));
+    AddHandler(Logging_LogUnknown, new CSettingTypeApplication("Logging", "Log Unknown", false));
 
     WriteTrace(TraceAppInit, TraceDebug, "Done");
 }

@@ -352,7 +352,9 @@ bool CRomList::LoadDataFromRomFile(const char * FileName, uint8_t * Data, int32_
         unz_file_info info;
         char zname[132];
         unzFile file;
-        file = unzOpen(FileName);
+        zlib_filefunc64_def ffunc;
+        fill_win32_filefunc64W(&ffunc);
+        file = unzOpen2_64(stdstr(FileName).ToUTF16().c_str(), &ffunc);
         if (file == nullptr)
         {
             return false;
@@ -542,7 +544,7 @@ bool CRomList::FillRomInfo(ROM_INFO * pRomInfo)
             pRomInfo->CRC1 = *(uint32_t *)(RomData + 0x10);
             pRomInfo->CRC2 = *(uint32_t *)(RomData + 0x14);
             pRomInfo->CicChip = CN64Rom::GetCicChipID(RomData);
-            if (pRomInfo->CicChip == CIC_NUS_8303 || pRomInfo->CicChip == CIC_NUS_DDUS || pRomInfo->CicChip == CIC_NUS_8401)
+            if (pRomInfo->CicChip == CIC_NUS_8303 || pRomInfo->CicChip == CIC_NUS_8501 || pRomInfo->CicChip == CIC_NUS_8401)
             {
                 pRomInfo->CRC1 = (*(uint16_t *)(RomData + 0x608) << 16) | *(uint16_t *)(RomData + 0x60C);
                 pRomInfo->CRC2 = (*(uint16_t *)(RomData + 0x638) << 16) | *(uint16_t *)(RomData + 0x63C);

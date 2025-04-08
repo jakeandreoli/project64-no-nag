@@ -10,6 +10,7 @@ enum ExitReason
 {
     ExitReason_Normal,
     ExitReason_NormalNoSysCheck,
+    ExitReason_CheckPCAlignment,
     ExitReason_DoCPUAction,
     ExitReason_COP1Unuseable,
     ExitReason_DoSysCall,
@@ -32,7 +33,7 @@ struct CExitInfo
 
     std::string Name;
     uint32_t ID;
-    uint64_t TargetPC;
+    uint32_t TargetPC;
     CRegInfo ExitRegSet;
     ExitReason Reason;
     PIPELINE_STAGE PipelineStage;
