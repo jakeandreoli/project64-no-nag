@@ -1,11 +1,6 @@
 #pragma once
 #include "Base.h"
 
-enum 
-{
-    CONTROLLER_SPECS_VERSION = 0x0102
-};
-
 enum PluginType
 {
     PLUGIN_NONE = 1,
@@ -126,14 +121,6 @@ data.
 */
 EXPORT void CALL ReadController(int Control, uint8_t * Command);
 
-/*
-Function: EmulationPaused
-Purpose: This function is called when the emulation is paused. (from the
-emulation thread)
-Input: None
-Output: None
-*/
-EXPORT void CALL EmulationPaused(void);
 
 /*
 Function: WM_KeyDown

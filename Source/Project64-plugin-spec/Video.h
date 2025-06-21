@@ -17,7 +17,19 @@ typedef struct
     uint8_t * DMEM;
     uint8_t * IMEM;
 
+    uint32_t RDRAM_SIZE;
+
     uint32_t * MI_INTR_REG;
+
+    uint32_t * SP_MEM_ADDR_REG;
+    uint32_t * SP_DRAM_ADDR_REG;
+    uint32_t * SP_RD_LEN_REG;
+    uint32_t * SP_WR_LEN_REG;
+    uint32_t * SP_STATUS_REG;
+    uint32_t * SP_DMA_FULL_REG;
+    uint32_t * SP_DMA_BUSY_REG;
+    uint32_t * SP_PC_REG;
+    uint32_t * SP_SEMAPHORE_REG;
 
     uint32_t * DPC_START_REG;
     uint32_t * DPC_END_REG;
@@ -78,11 +90,22 @@ Output: none
 EXPORT void CALL DrawScreen(void);
 
 /*
+Function: DrawStatus
+Purpose: This function displays a status string on the screen,
+optionally right-aligned.
+Input: lpString - pointer to the status string to display
+RightAlign - nonzero to right-align the string,
+zero for left alignment
+Output: none
+*/
+EXPORT void CALL DrawStatus(const char * lpString, int32_t RightAlign);
+
+/*
 Function: InitiateGFX
 Purpose: This function is called when the DLL is started to give
-information from the emulator that the n64 graphics
+information from the emulator that the N64 graphics
 uses. This is not called from the emulation thread.
-Input: Gfx_Info is passed to this function which is defined
+Input: GFX_INFO is passed to this function which is defined
 above.
 Output: TRUE on success
 FALSE on failure to initialise
@@ -108,6 +131,26 @@ Output: none
 EXPORT void CALL MoveScreen(int xpos, int ypos);
 
 /*
+Function: OnRomBrowserMenuItem
+Purpose: Callback when the ROM Browser menu supplied by the
+caller is invoked
+Input: MenuID - ID of the selected menu item
+hParent - handle to the parent window
+HEADER - pointer to the ROM header
+Output: none
+*/
+EXPORT void (CALL * OnRomBrowserMenuItem)(int32_t MenuID, void * hParent, uint8_t * HEADER);
+
+/*
+Function: GetRomBrowserMenu
+Purpose: Called when the ROM Browser right clicks on a game to be able to show a menu
+         Items should have an ID between 4101 and 4200
+Input: none
+Output: HMENU - menu to be shown
+*/
+EXPORT void * (CALL * GetRomBrowserMenu)(void);
+
+/*
 Function: ProcessDList
 Purpose: This function is called when there is a Dlist to be
 processed. (High level GFX list)
@@ -128,12 +171,21 @@ EXPORT void CALL ProcessRDPList(void);
 /*
 Function: ShowCFB
 Purpose: Useally once Dlists are started being displayed, cfb is
-ignored. This function tells the dll to start displaying
+ignored. This function tells the DLL to start displaying
 them again.
 Input: none
 Output: none
 */
 EXPORT void CALL ShowCFB(void);
+
+/*
+Function: SoftReset
+Purpose: This function is called to notify the plugin that a
+soft reset has occurred.
+Input: none
+Output: none
+*/
+EXPORT void CALL SoftReset(void);
 
 /*
 Function: UpdateScreen
@@ -147,7 +199,7 @@ EXPORT void CALL UpdateScreen(void);
 
 /*
 Function: ViStatusChanged
-Purpose: This function is called to notify the dll that the
+Purpose: This function is called to notify the DLL that the
 ViStatus registers value has been changed.
 Input: none
 Output: none
@@ -156,7 +208,7 @@ EXPORT void CALL ViStatusChanged(void);
 
 /*
 Function: ViWidthChanged
-Purpose: This function is called to notify the dll that the
+Purpose: This function is called to notify the DLL that the
 ViWidth registers value has been changed.
 Input: none
 Output: none

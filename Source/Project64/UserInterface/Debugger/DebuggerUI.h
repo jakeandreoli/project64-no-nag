@@ -7,6 +7,7 @@
 #include "Debugger-AddSymbol.h"
 #include "Debugger-CPULogView.h"
 #include "Debugger-Commands.h"
+#include "Debugger-CopyCommands.h"
 #include "Debugger-DMALogView.h"
 #include "Debugger-ExceptionBreakpoints.h"
 #include "Debugger-MemoryDump.h"
