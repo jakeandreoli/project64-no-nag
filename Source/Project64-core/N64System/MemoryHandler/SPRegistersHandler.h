@@ -7,6 +7,9 @@
 #include <Project64-rsp-core/cpu/RSPRegisterHandler.h>
 #include <stdint.h>
 
+#pragma warning(push)
+#pragma warning(disable : 4324) // structure was padded due to alignment specifier
+
 class SPRegistersReg
 {
 protected:
@@ -73,11 +76,13 @@ private:
     void DmaReadDone(uint32_t End);
     void SystemReset(void);
 
-    uint8_t m_IMEM[0x1000];
-    uint8_t m_DMEM[0x1000];
+    uint8_t m_IMEM[0x1000] alignas(16);
+    uint8_t m_DMEM[0x1000] alignas(16);
     CN64System & m_System;
     CMipsMemoryVM & m_MMU;
     CRegisters & m_Reg;
     uint32_t & m_RspIntrReg;
     uint64_t & m_PC;
 };
+
+#pragma warning(pop)

@@ -1,4 +1,6 @@
-#include "RSPInstruction.h"
+#if defined(__amd64__) || defined(_M_X64)
+
+#include "RSPInstruction-x64.h"
 #include "RSPRegisters.h"
 #include <Common/StdString.h>
 #include <Project64-rsp-core/RSPInfo.h>
@@ -6,10 +8,7 @@
 
 RSPInstruction::RSPInstruction(uint32_t Address, uint32_t Instruction) :
     m_Address(Address),
-    m_Flag(RSPInstructionFlag::Unknown),
-    m_DestReg(UNUSED_OPERAND),
-    m_SourceReg0(UNUSED_OPERAND),
-    m_SourceReg1(UNUSED_OPERAND)
+    m_Analyzed(false)
 {
     m_Name[0] = '\0';
     m_Param[0] = '\0';
@@ -20,25 +19,79 @@ RSPInstruction & RSPInstruction::operator=(const RSPInstruction & e)
 {
     m_Address = e.m_Address;
     m_Instruction.Value = e.m_Instruction.Value;
+    m_Analyzed = false;
     m_Name[0] = '\0';
     m_Param[0] = '\0';
-    m_Flag = RSPInstructionFlag::Unknown;
-    m_DestReg = UNUSED_OPERAND;
-    m_SourceReg0 = UNUSED_OPERAND;
-    m_SourceReg1 = UNUSED_OPERAND;
     return *this;
 }
 
 RSPInstruction::RSPInstruction(const RSPInstruction & e) :
     m_Address(e.m_Address),
-    m_Flag(RSPInstructionFlag::Unknown),
-    m_DestReg(UNUSED_OPERAND),
-    m_SourceReg0(UNUSED_OPERAND),
-    m_SourceReg1(UNUSED_OPERAND)
+    m_Analyzed(false)
 {
     m_Instruction.Value = e.m_Instruction.Value;
     m_Name[0] = '\0';
     m_Param[0] = '\0';
+}
+
+uint32_t RSPInstruction::Op() const
+{
+    return m_Instruction.op;
+}
+
+uint8_t RSPInstruction::Base() const
+{
+    return m_Instruction.base;
+}
+
+uint8_t RSPInstruction::Rt() const
+{
+    return m_Instruction.rt;
+}
+
+uint8_t RSPInstruction::Rd() const
+{
+    return m_Instruction.rd;
+}
+
+int16_t RSPInstruction::Offset() const
+{
+    return m_Instruction.offset;
+}
+
+uint8_t RSPInstruction::Rs() const
+{
+    return m_Instruction.rs;
+}
+
+uint8_t RSPInstruction::Sa() const
+{
+    return m_Instruction.sa;
+}
+
+uint8_t RSPInstruction::Funct() const
+{
+    return m_Instruction.funct;
+}
+
+uint8_t RSPInstruction::Vt() const
+{
+    return m_Instruction.vt;
+}
+
+uint8_t RSPInstruction::Vs() const
+{
+    return m_Instruction.vs;
+}
+
+uint8_t RSPInstruction::Vd() const
+{
+    return m_Instruction.vd;
+}
+
+uint8_t RSPInstruction::E() const
+{
+    return m_Instruction.e;
 }
 
 uint32_t RSPInstruction::Address() const
@@ -85,10 +138,6 @@ bool RSPInstruction::IsJumpReturn() const
 
 bool RSPInstruction::IsRegisterJump() const
 {
-    if (m_Flag == RSPInstructionFlag::Unknown)
-    {
-        AnalyzeInstruction();
-    }
     return m_Instruction.op == RSP_SPECIAL && (m_Instruction.funct == RSP_SPECIAL_JR || m_Instruction.funct == RSP_SPECIAL_JALR);
 }
 
@@ -97,19 +146,28 @@ bool RSPInstruction::IsStaticCall() const
     return m_Instruction.op == RSP_JAL;
 }
 
+bool RSPInstruction::ChangesControlFlow() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return (m_isJump || m_isBranch || m_isBreak);
+}
+
 bool RSPInstruction::DelaySlotAffectBranch() const
 {
     uint32_t DelayPC = (m_Address + 4) & 0x1FFC;
     RSPInstruction DelayInstruction(DelayPC, *(uint32_t *)(RSPInfo.IMEM + (DelayPC & 0xFFC)));
-    if (DelayInstruction.IsNop())
+    if (!DelayInstruction.WritesGpr())
     {
         return false;
     }
-    if (SourceReg0() == DelayInstruction.DestReg())
+    if (ReadGprReg0() == DelayInstruction.WriteGprReg())
     {
         return true;
     }
-    if (SourceReg1() == DelayInstruction.DestReg())
+    if (ReadGprReg1() == DelayInstruction.WriteGprReg())
     {
         return true;
     }
@@ -279,6 +337,150 @@ bool RSPInstruction::IsNop() const
     return m_Instruction.op == RSP_SPECIAL && m_Instruction.funct == RSP_SPECIAL_SLL && m_Instruction.rd == 0;
 }
 
+bool RSPInstruction::WritesGpr() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_WriteGprReg != UNUSED_OPERAND;
+}
+
+bool RSPInstruction::WritesGpr(uint32_t Register) const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_WriteGprReg == Register;
+}
+
+uint32_t RSPInstruction::WriteGprReg() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_WriteGprReg;
+}
+
+bool RSPInstruction::ReadsGpr() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_ReadGprReg0 != UNUSED_OPERAND || m_ReadGprReg1 != UNUSED_OPERAND;
+}
+
+bool RSPInstruction::ReadsGpr(uint32_t Register) const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_ReadGprReg0 == Register || m_ReadGprReg1 == Register;
+}
+
+uint32_t RSPInstruction::ReadGprReg0() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_ReadGprReg0;
+}
+
+uint32_t RSPInstruction::ReadGprReg1() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_ReadGprReg1;
+}
+
+bool RSPInstruction::WritesVector() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_WriteVectorReg != UNUSED_OPERAND;
+}
+
+bool RSPInstruction::WritesVector(uint32_t Register) const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_WriteVectorReg == Register;
+}
+
+uint32_t RSPInstruction::WriteVectorReg() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_WriteVectorReg;
+}
+
+bool RSPInstruction::ReadsVector() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_ReadVectorReg0 != UNUSED_OPERAND || m_ReadVectorReg1 != UNUSED_OPERAND;
+}
+
+bool RSPInstruction::ReadsVector(uint32_t Register) const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_ReadVectorReg0 == Register || m_ReadVectorReg1 == Register;
+}
+
+uint32_t RSPInstruction::ReadVectorReg0() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_ReadVectorReg0;
+}
+
+uint32_t RSPInstruction::ReadVectorReg1() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_ReadVectorReg1;
+}
+
+bool RSPInstruction::ReadsMemory() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_ReadsMemory;
+}
+
+bool RSPInstruction::WritesMemory() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_WritesMemory;
+}
+
 const char * RSPInstruction::Name() const
 {
     if (m_Name[0] == '\0')
@@ -307,62 +509,113 @@ uint32_t RSPInstruction::Value() const
     return m_Instruction.Value;
 }
 
-RSPInstructionFlag RSPInstruction::Flag() const
+bool RSPInstruction::isJump() const
 {
-    if (m_Flag == RSPInstructionFlag::Unknown)
+    if (!m_Analyzed)
     {
         AnalyzeInstruction();
     }
-    return m_Flag;
+    return m_isJump;
 }
 
-uint32_t RSPInstruction::DestReg() const
+bool RSPInstruction::isBranch() const
 {
-    if (m_Flag == RSPInstructionFlag::Unknown)
+    if (!m_Analyzed)
     {
         AnalyzeInstruction();
     }
-    return m_DestReg;
+    return m_isBranch;
 }
 
-uint32_t RSPInstruction::SourceReg0() const
+bool RSPInstruction::ReadAccumLow() const
 {
-    if (m_Flag == RSPInstructionFlag::Unknown)
+    if (!m_Analyzed)
     {
         AnalyzeInstruction();
     }
-    return m_SourceReg0;
+    return m_ReadAccumLow;
 }
 
-uint32_t RSPInstruction::SourceReg1() const
+bool RSPInstruction::ReadAccumMid() const
 {
-    if (m_Flag == RSPInstructionFlag::Unknown)
+    if (!m_Analyzed)
     {
         AnalyzeInstruction();
     }
-    return m_SourceReg1;
+    return m_ReadAccumMid;
+}
+
+bool RSPInstruction::ReadAccumHigh() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_ReadAccumHigh;
+}
+
+bool RSPInstruction::SetAccumLow() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_SetAccumLow;
+}
+
+bool RSPInstruction::SetAccumMid() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_SetAccumMid;
+}
+
+bool RSPInstruction::SetAccumHigh() const
+{
+    if (!m_Analyzed)
+    {
+        AnalyzeInstruction();
+    }
+    return m_SetAccumHigh;
 }
 
 void RSPInstruction::AnalyzeInstruction() const
 {
+    m_Analyzed = true;
+    m_isJump = false;
+    m_isBranch = false;
+    m_ReadAccumLow = false;
+    m_ReadAccumMid = false;
+    m_ReadAccumHigh = false;
+    m_SetAccumLow = false;
+    m_SetAccumMid = false;
+    m_SetAccumHigh = false;
+    m_WriteGprReg = UNUSED_OPERAND;
+    m_ReadGprReg0 = UNUSED_OPERAND;
+    m_ReadGprReg1 = UNUSED_OPERAND;
+    m_WriteVectorReg = UNUSED_OPERAND;
+    m_ReadVectorReg0 = UNUSED_OPERAND;
+    m_ReadVectorReg1 = UNUSED_OPERAND;
+    m_ReadsMemory = false;
+    m_WritesMemory = false;
+    m_isBreak = false;
+    m_InvalidOp = false;
+
     switch (m_Instruction.op)
     {
     case RSP_SPECIAL:
         switch (m_Instruction.funct)
         {
         case RSP_SPECIAL_BREAK:
-            m_DestReg = UNUSED_OPERAND;
-            m_SourceReg0 = UNUSED_OPERAND;
-            m_SourceReg1 = UNUSED_OPERAND;
-            m_Flag = RSPInstructionFlag::Break;
+            m_isBreak = true;
             break;
         case RSP_SPECIAL_SLL:
         case RSP_SPECIAL_SRL:
         case RSP_SPECIAL_SRA:
-            m_DestReg = m_Instruction.rd;
-            m_SourceReg0 = m_Instruction.rt;
-            m_SourceReg1 = UNUSED_OPERAND;
-            m_Flag = RSPInstructionFlag::GPROperation;
+            m_WriteGprReg = m_Instruction.rd != 0 ? m_Instruction.rd : UNUSED_OPERAND;
+            m_ReadGprReg0 = m_Instruction.rt;
             break;
         case RSP_SPECIAL_SLLV:
         case RSP_SPECIAL_SRLV:
@@ -377,19 +630,21 @@ void RSPInstruction::AnalyzeInstruction() const
         case RSP_SPECIAL_NOR:
         case RSP_SPECIAL_SLT:
         case RSP_SPECIAL_SLTU:
-            m_DestReg = m_Instruction.rd;
-            m_SourceReg0 = m_Instruction.rs;
-            m_SourceReg1 = m_Instruction.rt;
-            m_Flag = RSPInstructionFlag::GPROperation;
+            m_WriteGprReg = m_Instruction.rd != 0 ? m_Instruction.rd : UNUSED_OPERAND;
+            m_ReadGprReg0 = m_Instruction.rs;
+            m_ReadGprReg1 = m_Instruction.rt;
             break;
         case RSP_SPECIAL_JR:
+            m_isJump = true;
+            m_ReadGprReg0 = m_Instruction.rs;
+            break;
         case RSP_SPECIAL_JALR:
-            m_Flag = RSPInstructionFlag::JumpRegister;
-            m_SourceReg0 = m_Instruction.rs;
-            m_SourceReg1 = UNUSED_OPERAND;
+            m_isJump = true;
+            m_ReadGprReg0 = m_Instruction.rs;
+            m_WriteGprReg = 31;
             break;
         default:
-            m_Flag = RSPInstructionFlag::InvalidOpcode;
+            m_InvalidOp = true;
             break;
         }
         break;
@@ -400,33 +655,31 @@ void RSPInstruction::AnalyzeInstruction() const
         case RSP_REGIMM_BLTZAL:
         case RSP_REGIMM_BGEZ:
         case RSP_REGIMM_BGEZAL:
-            m_Flag = RSPInstructionFlag::Branch;
-            m_SourceReg0 = m_Instruction.rs;
-            m_SourceReg1 = UNUSED_OPERAND;
+            m_isBranch = true;
+            m_ReadGprReg0 = m_Instruction.rs;
             break;
-
         default:
-            m_Flag = RSPInstructionFlag::InvalidOpcode;
+            m_InvalidOp = true;
             break;
         }
         break;
     case RSP_J:
+        m_isJump = true;
+        break;
     case RSP_JAL:
-        m_Flag = RSPInstructionFlag::Jump;
-        m_SourceReg0 = UNUSED_OPERAND;
-        m_SourceReg1 = UNUSED_OPERAND;
+        m_isJump = true;
+        m_WriteGprReg = 31;
         break;
     case RSP_BEQ:
     case RSP_BNE:
-        m_Flag = RSPInstructionFlag::Branch;
-        m_SourceReg0 = m_Instruction.rt;
-        m_SourceReg1 = m_Instruction.rs;
+        m_isBranch = true;
+        m_ReadGprReg0 = m_Instruction.rt;
+        m_ReadGprReg1 = m_Instruction.rs;
         break;
     case RSP_BLEZ:
     case RSP_BGTZ:
-        m_Flag = RSPInstructionFlag::Branch;
-        m_SourceReg0 = m_Instruction.rs;
-        m_SourceReg1 = UNUSED_OPERAND;
+        m_isBranch = true;
+        m_ReadGprReg0 = m_Instruction.rs;
         break;
     case RSP_ADDI:
     case RSP_ADDIU:
@@ -435,31 +688,20 @@ void RSPInstruction::AnalyzeInstruction() const
     case RSP_ANDI:
     case RSP_ORI:
     case RSP_XORI:
-        m_DestReg = m_Instruction.rt;
-        m_SourceReg0 = m_Instruction.rs;
-        m_SourceReg1 = UNUSED_OPERAND;
-        m_Flag = RSPInstructionFlag::GPROperation;
+        m_WriteGprReg = m_Instruction.rt;
+        m_ReadGprReg0 = m_Instruction.rs;
         break;
     case RSP_LUI:
-        m_DestReg = m_Instruction.rt;
-        m_SourceReg0 = UNUSED_OPERAND;
-        m_SourceReg1 = UNUSED_OPERAND;
-        m_Flag = RSPInstructionFlag::GPROperation;
+        m_WriteGprReg = m_Instruction.rt;
         break;
     case RSP_CP0:
         switch (m_Instruction.rs)
         {
         case RSP_COP0_MF:
-            m_DestReg = m_Instruction.rt;
-            m_SourceReg0 = UNUSED_OPERAND;
-            m_SourceReg1 = UNUSED_OPERAND;
-            m_Flag = RSPInstructionFlag::MF;
+            m_WriteGprReg = m_Instruction.rt;
             break;
-
         case RSP_COP0_MT:
-            m_SourceReg0 = m_Instruction.rt;
-            m_SourceReg1 = UNUSED_OPERAND;
-            m_Flag = RSPInstructionFlag::MT;
+            m_ReadGprReg0 = m_Instruction.rt;
             break;
         }
         break;
@@ -469,10 +711,6 @@ void RSPInstruction::AnalyzeInstruction() const
             switch (m_Instruction.funct)
             {
             case RSP_VECTOR_VNOP:
-                m_DestReg = UNUSED_OPERAND;
-                m_SourceReg0 = UNUSED_OPERAND;
-                m_SourceReg1 = UNUSED_OPERAND;
-                m_Flag = RSPInstructionFlag::Vector;
                 break;
             case RSP_VECTOR_VMULF:
             case RSP_VECTOR_VMULU:
@@ -480,6 +718,13 @@ void RSPInstruction::AnalyzeInstruction() const
             case RSP_VECTOR_VMUDM:
             case RSP_VECTOR_VMUDN:
             case RSP_VECTOR_VMUDH:
+                m_WriteVectorReg = m_Instruction.sa;
+                m_ReadVectorReg0 = m_Instruction.rd;
+                m_ReadVectorReg1 = m_Instruction.rt;
+                m_SetAccumLow = true;
+                m_SetAccumMid = true;
+                m_SetAccumHigh = true;
+                break;
             case RSP_VECTOR_VABS:
             case RSP_VECTOR_VAND:
             case RSP_VECTOR_VOR:
@@ -487,21 +732,35 @@ void RSPInstruction::AnalyzeInstruction() const
             case RSP_VECTOR_VNAND:
             case RSP_VECTOR_VNOR:
             case RSP_VECTOR_VNXOR:
-                m_DestReg = m_Instruction.sa;
-                m_SourceReg0 = m_Instruction.rd;
-                m_SourceReg1 = m_Instruction.rt;
-                m_Flag = RSPInstructionFlag::VectorSetAccum;
+                m_WriteVectorReg = m_Instruction.sa;
+                m_ReadVectorReg0 = m_Instruction.rd;
+                m_ReadVectorReg1 = m_Instruction.rt;
+                m_SetAccumLow = true;
                 break;
             case RSP_VECTOR_VMACF:
             case RSP_VECTOR_VMACU:
             case RSP_VECTOR_VMADL:
             case RSP_VECTOR_VMADM:
             case RSP_VECTOR_VMADN:
+                m_ReadAccumLow = true;
+                m_ReadAccumMid = true;
+                m_ReadAccumHigh = true;
+                m_SetAccumLow = true;
+                m_SetAccumMid = true;
+                m_SetAccumHigh = true;
+                m_WriteVectorReg = m_Instruction.sa;
+                m_ReadVectorReg0 = m_Instruction.rd;
+                m_ReadVectorReg1 = m_Instruction.rt;
+                break;
             case RSP_VECTOR_VMADH:
-                m_DestReg = m_Instruction.sa;
-                m_SourceReg0 = m_Instruction.rd;
-                m_SourceReg1 = m_Instruction.rt;
-                m_Flag = RSPInstructionFlag::VectorUseAccum;
+                m_ReadAccumLow = true;
+                m_ReadAccumMid = true;
+                m_ReadAccumHigh = true;
+                m_SetAccumMid = true;
+                m_SetAccumHigh = true;
+                m_WriteVectorReg = m_Instruction.sa;
+                m_ReadVectorReg0 = m_Instruction.rd;
+                m_ReadVectorReg1 = m_Instruction.rt;
                 break;
             case RSP_VECTOR_VADD:
             case RSP_VECTOR_VADDC:
@@ -514,10 +773,10 @@ void RSPInstruction::AnalyzeInstruction() const
             case RSP_VECTOR_VEQ:
             case RSP_VECTOR_VGE:
             case RSP_VECTOR_VNE:
-                m_DestReg = m_Instruction.sa;
-                m_SourceReg0 = m_Instruction.rd;
-                m_SourceReg1 = m_Instruction.rt;
-                m_Flag = RSPInstructionFlag::VectorSetAccum;
+                m_SetAccumLow = true;
+                m_WriteVectorReg = m_Instruction.sa;
+                m_ReadVectorReg0 = m_Instruction.rd;
+                m_ReadVectorReg1 = m_Instruction.rt;
                 break;
             case RSP_VECTOR_VMOV:
             case RSP_VECTOR_VRCP:
@@ -525,25 +784,24 @@ void RSPInstruction::AnalyzeInstruction() const
             case RSP_VECTOR_VRCPH:
             case RSP_VECTOR_VRSQL:
             case RSP_VECTOR_VRSQH:
-                m_DestReg = m_Instruction.sa;
-                m_SourceReg0 = m_Instruction.rt;
-                m_SourceReg1 = UNUSED_OPERAND;
-                m_Flag = RSPInstructionFlag::VectorSetAccum;
+                m_SetAccumLow = true;
+                m_WriteVectorReg = m_Instruction.sa;
+                m_ReadVectorReg0 = m_Instruction.rt;
                 break;
             case RSP_VECTOR_VMRG:
-                m_DestReg = m_Instruction.sa;
-                m_SourceReg0 = m_Instruction.rt;
-                m_SourceReg1 = m_Instruction.rd;
-                m_Flag = RSPInstructionFlag::VectorSetAccum;
+                m_SetAccumLow = true;
+                m_WriteVectorReg = m_Instruction.sa;
+                m_ReadVectorReg0 = m_Instruction.rt;
+                m_ReadVectorReg1 = m_Instruction.rd;
                 break;
             case RSP_VECTOR_VSAW:
-                m_DestReg = m_Instruction.sa;
-                m_SourceReg0 = UNUSED_OPERAND;
-                m_SourceReg1 = UNUSED_OPERAND;
-                m_Flag = RSPInstructionFlag::VectorUseAccum;
+                m_ReadAccumLow = true;
+                m_ReadAccumMid = true;
+                m_ReadAccumHigh = true;
+                m_WriteVectorReg = m_Instruction.sa;
                 break;
             default:
-                m_Flag = RSPInstructionFlag::InvalidOpcode;
+                m_InvalidOp = true;
                 break;
             }
         }
@@ -552,31 +810,21 @@ void RSPInstruction::AnalyzeInstruction() const
             switch (m_Instruction.rs)
             {
             case RSP_COP2_CT:
-                m_SourceReg0 = m_Instruction.rt;
-                m_SourceReg1 = UNUSED_OPERAND;
-                m_Flag = RSPInstructionFlag::CT;
+                m_ReadGprReg0 = m_Instruction.rt;
                 break;
             case RSP_COP2_CF:
-                m_DestReg = m_Instruction.rt;
-                m_SourceReg0 = UNUSED_OPERAND;
-                m_SourceReg1 = UNUSED_OPERAND;
-                m_Flag = RSPInstructionFlag::CF;
+                m_WriteGprReg = m_Instruction.rt;
                 break;
-                // RD is always the vector register, RT is always GPR
             case RSP_COP2_MT:
-                m_DestReg = m_Instruction.rd;
-                m_SourceReg0 = m_Instruction.rt;
-                m_SourceReg1 = UNUSED_OPERAND;
-                m_Flag = RSPInstructionFlag::Vector;
+                m_ReadVectorReg0 = m_Instruction.vs;
+                m_WriteGprReg = m_Instruction.rt;
                 break;
             case RSP_COP2_MF:
-                m_DestReg = m_Instruction.rt;
-                m_SourceReg0 = m_Instruction.rd;
-                m_SourceReg1 = UNUSED_OPERAND;
-                m_Flag = RSPInstructionFlag::Vector;
+                m_ReadGprReg0 = m_Instruction.rt;
+                m_WriteVectorReg = m_Instruction.vs;
                 break;
             default:
-                m_Flag = RSPInstructionFlag::InvalidOpcode;
+                m_InvalidOp = true;
                 break;
             }
         }
@@ -586,18 +834,16 @@ void RSPInstruction::AnalyzeInstruction() const
     case RSP_LW:
     case RSP_LBU:
     case RSP_LHU:
-        m_DestReg = m_Instruction.rt;
-        m_SourceReg0 = m_Instruction.base;
-        m_SourceReg1 = UNUSED_OPERAND;
-        m_Flag = RSPInstructionFlag::Load;
+        m_ReadsMemory = true;
+        m_WriteGprReg = m_Instruction.rt;
+        m_ReadGprReg0 = m_Instruction.base;
         break;
     case RSP_SB:
     case RSP_SH:
     case RSP_SW:
-        m_DestReg = m_Instruction.rt;
-        m_SourceReg1 = m_Instruction.base;
-        m_SourceReg1 = UNUSED_OPERAND;
-        m_Flag = RSPInstructionFlag::Store;
+        m_WritesMemory = true;
+        m_ReadGprReg0 = m_Instruction.rt;
+        m_ReadGprReg1 = m_Instruction.base;
         break;
     case RSP_LC2:
         switch (m_Instruction.rd)
@@ -610,17 +856,13 @@ void RSPInstruction::AnalyzeInstruction() const
         case RSP_LSC2_LV:
         case RSP_LSC2_UV:
         case RSP_LSC2_PV:
-            m_DestReg = m_Instruction.rt;
-            m_SourceReg0 = m_Instruction.base;
-            m_SourceReg1 = UNUSED_OPERAND;
-            m_Flag = RSPInstructionFlag::VectorLoad;
-            break;
         case RSP_LSC2_TV:
-            m_Flag = RSPInstructionFlag::InvalidOpcode;
-            ;
+            m_WriteVectorReg = m_Instruction.vt;
+            m_ReadGprReg0 = m_Instruction.base;
+            m_ReadsMemory = true;
             break;
         default:
-            m_Flag = RSPInstructionFlag::InvalidOpcode;
+            m_InvalidOp = true;
             break;
         }
         break;
@@ -638,21 +880,18 @@ void RSPInstruction::AnalyzeInstruction() const
         case RSP_LSC2_HV:
         case RSP_LSC2_FV:
         case RSP_LSC2_WV:
-            m_DestReg = m_Instruction.rt;
-            m_SourceReg0 = m_Instruction.base;
-            m_SourceReg1 = UNUSED_OPERAND;
-            m_Flag = RSPInstructionFlag::VectorStore;
-            break;
         case RSP_LSC2_TV:
-            m_Flag = RSPInstructionFlag::InvalidOpcode;
+            m_WritesMemory = true;
+            m_ReadVectorReg0 = m_Instruction.vt;
+            m_ReadGprReg0 = m_Instruction.base;
             break;
         default:
-            m_Flag = RSPInstructionFlag::InvalidOpcode;
+            m_InvalidOp = true;
             break;
         }
         break;
     default:
-        m_Flag = RSPInstructionFlag::InvalidOpcode;
+        m_InvalidOp = true;
         break;
     }
 }
@@ -1325,3 +1564,5 @@ const char * RSPInstruction::ElementSpecifier(uint32_t Element)
     }
     return "Unknown Element";
 }
+
+#endif

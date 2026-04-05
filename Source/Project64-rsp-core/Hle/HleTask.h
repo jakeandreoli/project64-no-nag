@@ -65,6 +65,7 @@ private:
 
     void SetupCommandList(const TASK_INFO & TaskInfo, HLETaskBooter bootType);
     void ExecuteTask_1a13a51a(const TASK_INFO & TaskInfo);
+    void ExecuteTask_c2193700(const TASK_INFO & TaskInfo);
     void SetupTask_CAB15710(const TASK_INFO & TaskInfo);
     void SetupTask_B4C62BFC(const TASK_INFO & TaskInfo);
 
@@ -72,6 +73,8 @@ private:
     void (*&ProcessDList)(void);
 
     CHle m_hle;
+    void * m_TaskEnter;
+    void * m_TaskLeave;
     TaskFunctionMap m_FunctionMap;
     const TaskFunctions * m_TaskFunctions;
     CRSPSystem & m_System;

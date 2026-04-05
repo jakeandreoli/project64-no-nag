@@ -1,6 +1,7 @@
 #pragma once
 #if defined(__amd64__) || defined(_M_X64)
 
+#include <Common/StdString.h>
 #include <Project64-rsp-core/Recompiler/asmjit.h>
 #include <map>
 
@@ -13,6 +14,8 @@ public:
     RspAssembler(asmjit::CodeHolder * CodeHolder, std::string & CodeLog);
 
     void Reset(void);
+    void SetPrimarySection(void);
+    void SetSecondarySection(void);
 
     void CallFunc(void * FunctPtr, const char * FunctName);
     void CallThis(void * ThisPtr, void * FunctPtr, const char * FunctName);
@@ -54,6 +57,8 @@ private:
     std::string & m_CodeLog;
     LabelSymbolMap m_LabelSymbols;
     NumberSymbolMap m_NumberSymbols;
+    asmjit::Section * m_PrimarySection;
+    asmjit::Section * m_SecondarySection;
 };
 
 #endif

@@ -120,13 +120,8 @@ public:
     CRSPRegisters();
     void Reset(void);
 
-    int64_t AccumulatorGet(uint8_t el);
-    void AccumulatorSet(uint8_t el, int64_t Accumulator);
-    uint16_t AccumulatorSaturate(uint8_t el, bool High);
-
     UWORD32 m_GPR[32];
-    UWORD32 m_Flags[4];
-    UDWORD m_ACCUM[8];
+    RSPAccumulator m_ACCUM;
     RSPVector m_Vect[32];
     uint16_t m_Reciprocals[512];
     uint16_t m_InverseSquareRoots[512];
@@ -134,9 +129,9 @@ public:
     uint16_t m_In;
     bool m_High;
 
-    RSPFlag VCOL, VCOH;
-    RSPFlag VCCL, VCCH;
-    RSPFlag VCE;
+    RSPFlag m_VCOL, m_VCOH;
+    RSPFlag m_VCCL, m_VCCH;
+    RSPFlag m_VCE;
 };
 
 #if defined(__i386__) || defined(_M_IX86)

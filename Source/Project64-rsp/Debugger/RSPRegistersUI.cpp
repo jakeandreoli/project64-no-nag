@@ -1,5 +1,6 @@
 #include <windows.h>
 
+#include <Common/StdString.h>
 #include <Project64-rsp-core/RSPInfo.h>
 #include <Project64-rsp-core/cpu/RSPRegisters.h>
 #include <Project64-rsp-core/cpu/RspSystem.h>
@@ -531,7 +532,7 @@ void SetupRSP_RegistersMain(HWND hDlg)
 #ifdef _M_IX86
     RefreshProc = (WNDPROC)SetWindowLong(hStatic, GWL_WNDPROC, (long)RefreshRSP_RegProc);
 #else
-    DebugBreak();
+    RefreshProc = (WNDPROC)SetWindowLongPtr(hStatic, GWLP_WNDPROC, (LONG_PTR)RefreshRSP_RegProc);
 #endif
 
     UpdateRSPRegistersScreen();
@@ -685,16 +686,13 @@ void UpdateRSPRegistersScreen(void)
         case HiddenRegisters:
             for (count = 0; count < 8; count++)
             {
-                sprintf(RegisterValue, " 0x%08X - %08X", Reg.m_ACCUM[count].W[1], Reg.m_ACCUM[count].W[0]);
+                sprintf(RegisterValue, " 0x%04X - %04X - %04X", Reg.m_ACCUM.Low(count), Reg.m_ACCUM.Mid(count), Reg.m_ACCUM.High(count));
                 SetWindowTextA(hHIDDEN[count], RegisterValue);
             }
-            for (count = 0; count < 3; count++)
-            {
-                sprintf(RegisterValue, " 0x%04X", Reg.m_Flags[count].UHW[0]);
-                SetWindowTextA(hHIDDEN[count + 8], RegisterValue);
-            }
-            sprintf(RegisterValue, " 0x%04X", Reg.m_Flags[2].UHW[0]);
-            SetWindowTextA(hHIDDEN[11], RegisterValue);
+            SetWindowTextA(hHIDDEN[8], stdstr_f(" 0x%02X%02X", Reg.m_VCOH.GetPacked(), Reg.m_VCOL.GetPacked()).c_str());
+            SetWindowTextA(hHIDDEN[9], stdstr_f(" 0x%02X%02X", Reg.m_VCCH.GetPacked(), Reg.m_VCCL.GetPacked()).c_str());
+            SetWindowTextA(hHIDDEN[10], stdstr_f(" 0x%04X", Reg.m_VCE.GetPacked()).c_str());
+            SetWindowTextA(hHIDDEN[11], stdstr_f(" 0x%04X", Reg.m_VCE.GetPacked()).c_str());
             break;
         case Vector1:
             for (count = 0; count < 16; count++)
