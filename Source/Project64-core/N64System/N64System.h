@@ -11,8 +11,6 @@
 #include <Project64-core/N64System/Profiling.h>
 #include <Project64-core/N64System/Recompiler/Recompiler.h>
 #include <Project64-core/Plugin.h>
-#include <Project64-core/Settings/DebugSettings.h>
-#include <Project64-core/Settings/N64SystemSettings.h>
 
 #include "FramePerSecond.h"
 #include "Mips/TLB.h"
@@ -36,10 +34,7 @@ enum CN64SystemCB
 };
 
 class CN64System :
-    public CLogging,
-    protected CN64SystemSettings,
-    public CGameSettings,
-    protected CDebugSettings
+    public CLogging
 {
 public:
     typedef void (*CallBackFunction)(void *);
@@ -99,6 +94,9 @@ public:
     bool LoadState();
     uint32_t GetButtons(int32_t Control) const;
 
+    void RefreshGameSettings(void);
+    void RefreshSyncToAudio(void);
+
     // Variable used to track that the SP is being handled and stays the same as the real SP in sync core
 #ifdef TEST_SP_TRACKING
     uint32_t m_CurrentSP;
@@ -141,6 +139,7 @@ private:
     friend class CRecompiler;
     friend class CRecompilerOpsBase;
     friend class CX86RecompilerOps;
+    friend class CX64RecompilerOps;
     friend class CArmRecompilerOps;
     friend class CCodeBlock;
     friend class CMipsMemoryVM;

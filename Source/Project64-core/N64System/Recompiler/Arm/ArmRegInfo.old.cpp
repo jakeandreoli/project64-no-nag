@@ -325,7 +325,7 @@ void CArmRegInfo::Map_GPR_32bit(int32_t MipsReg, bool SignValue, int32_t MipsReg
         Reg = FreeArmReg(false);
         if (Reg < 0)
         {
-            if (HaveDebugger())
+            if (g_DebugSettings.haveDebugger)
             {
                 g_Notify->DisplayError("Map_GPR_32bit\n\nOut of registers");
             }
@@ -401,7 +401,7 @@ void CArmRegInfo::Map_GPR_64bit(int32_t MipsReg, int32_t MipsRegToLoad)
 
     if (MipsReg == 0)
     {
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
             g_Notify->DisplayError("Map_GPR_64bit\n\nWhy are you trying to map register 0?");
         }
@@ -415,7 +415,7 @@ void CArmRegInfo::Map_GPR_64bit(int32_t MipsReg, int32_t MipsRegToLoad)
         regHi = FreeArmReg(false);
         if (regHi < 0)
         {
-            if (HaveDebugger())
+            if (g_DebugSettings.haveDebugger)
             {
                 g_Notify->DisplayError("Map_GPR_64bit\n\nOut of registers");
             }
@@ -427,7 +427,7 @@ void CArmRegInfo::Map_GPR_64bit(int32_t MipsReg, int32_t MipsRegToLoad)
         reglo = FreeArmReg(false);
         if (reglo < 0)
         {
-            if (HaveDebugger())
+            if (g_DebugSettings.haveDebugger)
             {
                 g_Notify->DisplayError("Map_GPR_64bit\n\nOut of registers");
             }
@@ -448,7 +448,7 @@ void CArmRegInfo::Map_GPR_64bit(int32_t MipsReg, int32_t MipsRegToLoad)
             regHi = FreeArmReg(false);
             if (regHi < 0)
             {
-                if (HaveDebugger())
+                if (g_DebugSettings.haveDebugger)
                 {
                     g_Notify->DisplayError("Map_GPR_64bit\n\nOut of registers");
                 }
@@ -550,7 +550,7 @@ void CArmRegInfo::UnMap_GPR(uint32_t MipsReg, bool WriteBackValue)
 
     if (MipsReg == 0)
     {
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
             g_Notify->DisplayError(stdstr_f("%s\n\nWhy are you trying to unmap register 0?", __FUNCTION__).c_str());
         }
@@ -589,7 +589,7 @@ void CArmRegInfo::WriteBack_GPR(uint32_t MipsReg, bool Unmapping)
     }
     if (MipsReg == 0)
     {
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
             g_Notify->DisplayError(stdstr_f("%s\n\nWhy are you trying to unmap register 0?", __FUNCTION__).c_str());
         }
@@ -611,7 +611,7 @@ void CArmRegInfo::WriteBack_GPR(uint32_t MipsReg, bool Unmapping)
             m_Assembler.MoveConstToArmReg(TempReg, GetMipsRegHi(MipsReg));
             m_Assembler.StoreArmRegToArmRegPointer(TempReg, GprReg, (uint8_t)(MipsReg << 3) + 4, CRegName::GPR_Hi[MipsReg]);
         }
-        else if (!g_System->b32BitCore())
+        else if (!g_GameSettings.core32Bit)
         {
             m_Assembler.MoveConstToArmReg(TempReg, (GetMipsRegLo(MipsReg) & 0x80000000) != 0 ? 0xFFFFFFFF : 0);
             m_Assembler.StoreArmRegToArmRegPointer(TempReg, GprReg, (uint8_t)(MipsReg << 3) + 4, CRegName::GPR_Hi[MipsReg]);
@@ -627,7 +627,7 @@ void CArmRegInfo::WriteBack_GPR(uint32_t MipsReg, bool Unmapping)
         {
             m_Assembler.StoreArmRegToArmRegPointer(GetMipsRegMapHi(MipsReg), GprReg, (uint8_t)(MipsReg << 3) + 4, CRegName::GPR_Hi[MipsReg]);
         }
-        else if (!g_System->b32BitCore())
+        else if (!g_GameSettings.core32Bit)
         {
             bool loProtected = GetArmRegProtected(GetMipsRegMapLo(MipsReg));
             if (!Unmapping)
@@ -979,7 +979,7 @@ CArmOps::ArmReg CArmRegInfo::FreeArmReg(bool TempMapping)
 
 void CArmRegInfo::LogRegisterState(void)
 {
-    if (!CDebugSettings::bRecordRecompilerAsm())
+    if (!g_DebugSettings.recordRecompilerAsm)
     {
         return;
     }

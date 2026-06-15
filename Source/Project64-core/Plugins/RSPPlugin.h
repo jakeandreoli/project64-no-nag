@@ -4,12 +4,9 @@
 #include <Project64-core/Plugins/PluginBase.h>
 #include <Project64-core/Settings/DebugSettings.h>
 #include <Project64-core/Settings/GameSettings.h>
-#include <Project64-core/Settings/N64SystemSettings.h>
 
 class CRSP_Plugin :
-    public CPlugin,
-    protected CN64SystemSettings,
-    protected CGameSettings
+    public CPlugin
 {
     typedef struct
     {

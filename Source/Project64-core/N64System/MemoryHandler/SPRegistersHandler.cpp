@@ -63,13 +63,13 @@ bool SPRegistersHandler::Read32(uint32_t Address, uint32_t & Value)
     case 0x04080000: Value = SP_PC_REG; break;
     default:
         Value = 0;
-        if (BreakOnUnhandledMemory())
+        if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
     }
 
-    if (LogSPRegisters())
+    if (g_LogSettings.logSpRegisters)
     {
         switch (Address & 0x1FFFFFFF)
         {
@@ -83,7 +83,7 @@ bool SPRegistersHandler::Read32(uint32_t Address, uint32_t & Value)
         case 0x0404001C: LogMessage("%016llX: read from SP_SEMAPHORE_REG (%08X)", m_PC, Value); break;
         case 0x04080000: LogMessage("%016llX: read from SP_PC (%08X)", m_PC, Value); break;
         default:
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -107,7 +107,7 @@ bool SPRegistersHandler::Write32(uint32_t Address, uint32_t Value, uint32_t Mask
         }
         return true;
     }
-    if (GenerateLog() && LogSPRegisters())
+    if (g_LogSettings.generateLog && g_LogSettings.logSpRegisters)
     {
         switch (Address & 0x1FFFFFFF)
         {
@@ -121,7 +121,7 @@ bool SPRegistersHandler::Write32(uint32_t Address, uint32_t Value, uint32_t Mask
         case 0x0404001C: LogMessage("%016llX: Writing 0x%08X (Mask: 0x%08X) to SP_SEMAPHORE_REG", m_PC, Value, Mask); break;
         case 0x04080000: LogMessage("%016llX: Writing 0x%08X (Mask: 0x%08X) to SP_PC", m_PC, Value, Mask); break;
         default:
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -136,7 +136,7 @@ bool SPRegistersHandler::Write32(uint32_t Address, uint32_t Value, uint32_t Mask
     case 0x0404000C: WriteReg(RSPRegister_WR_LEN, MaskedValue); break;
     case 0x04040010:
         WriteReg(RSPRegister_STATUS, MaskedValue);
-        if ((MaskedValue & SP_SET_SIG0) != 0 && RspAudioSignal())
+        if ((MaskedValue & SP_SET_SIG0) != 0 && g_GameSettings.rspAudioSignal)
         {
             MI_INTR_REG |= MI_INTR_SP;
             m_Reg.CheckInterrupts();
@@ -146,7 +146,7 @@ bool SPRegistersHandler::Write32(uint32_t Address, uint32_t Value, uint32_t Mask
     case 0x0404001C: SP_SEMAPHORE_REG = 0; break;
     case 0x04080000: SP_PC_REG = MaskedValue & 0xFFC; break;
     default:
-        if (BreakOnUnhandledMemory())
+        if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }

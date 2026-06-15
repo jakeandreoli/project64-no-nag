@@ -32,7 +32,7 @@ CN64System::CN64System(CPlugins * Plugins, uint32_t randomizer_seed, bool SavesR
     //m_Cheats(m_MMU_VM),
     m_Reg(*this, m_SystemEvents),
     m_TLB(m_MMU_VM, m_Reg, m_Recomp),
-    m_OpCodes(*this, !SyncSystem && g_Settings->LoadDword(Game_CpuType) != CPU_Interpreter && b32BitCore()),
+    m_OpCodes(*this, !SyncSystem && g_Settings->LoadDword(Game_CpuType) != CPU_Interpreter && g_GameSettings.core32Bit),
     m_Recomp(nullptr),
     m_InReset(false),
     m_NextTimer(0),
@@ -57,7 +57,7 @@ CN64System::CN64System(CPlugins * Plugins, uint32_t randomizer_seed, bool SavesR
     uint32_t gameHertz = g_Settings->LoadDword(Game_ScreenHertz);
     if (gameHertz == 0)
     {
-        gameHertz = (SystemType() == SYSTEM_PAL) ? 50 : 60;
+        gameHertz = (g_GameSettings.systemType == SYSTEM_PAL) ? 50 : 60;
     }
     m_Limiter.SetHertz(gameHertz);
     g_Settings->SaveDword(GameRunning_ScreenHertz, gameHertz);
@@ -83,7 +83,7 @@ CN64System::CN64System(CPlugins * Plugins, uint32_t randomizer_seed, bool SavesR
     {
         uint32_t CpuType = g_Settings->LoadDword(Game_CpuType);
         WriteTrace(TraceN64System, TraceDebug, "CpuType = %d", CpuType);
-        if (CpuType == CPU_SyncCores && !g_Settings->LoadBool(Debugger_Enabled))
+        if (CpuType == CPU_SyncCores && !g_DebugSettings.haveDebugger)
         {
             g_Settings->SaveDword(Game_CpuType, CPU_Recompiler);
             CpuType = CPU_Recompiler;
@@ -258,7 +258,7 @@ void CN64System::ExternalEvent(SystemEvent action)
         }
         break;
     case SysEvent_PauseCPU_ChangingBPs:
-        if (!WaitingForStep() && !g_Settings->LoadBool(GameRunning_CPU_Paused))
+        if (!g_DebugSettings.waitingForStep && !g_Settings->LoadBool(GameRunning_CPU_Paused))
         {
             m_SystemEvents.QueueEvent(action);
             for (int i = 0; i < 100; i++)
@@ -751,7 +751,7 @@ void CN64System::StartEmulation2(bool NewThread)
     WriteTrace(TraceN64System, TraceDebug, "Start (NewThread: %s)", NewThread ? "true" : "false");
     if (NewThread)
     {
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
             StartLog();
         }
@@ -1003,7 +1003,7 @@ void CN64System::ExecuteCPU()
         m_SyncCPU->m_Plugins->RomOpened();
     }
 
-    if (g_Debugger != nullptr && HaveDebugger())
+    if (g_Debugger != nullptr && g_DebugSettings.haveDebugger)
     {
         g_Debugger->EmulationStarted();
     }
@@ -1037,7 +1037,7 @@ void CN64System::ExecuteCPU()
         m_SyncCPU->m_Plugins->RomClosed();
     }
 
-    if (g_Debugger != nullptr && HaveDebugger())
+    if (g_Debugger != nullptr && g_DebugSettings.haveDebugger)
     {
         g_Debugger->EmulationStopped();
     }
@@ -1158,7 +1158,7 @@ void CN64System::SyncSystem()
         ErrorFound = true;
     }
 #endif
-    if (b32BitCore())
+    if (g_GameSettings.core32Bit)
     {
         if ((uint32_t)m_Reg.m_PROGRAM_COUNTER != (uint32_t)m_SyncCPU->m_Reg.m_PROGRAM_COUNTER)
         {
@@ -1229,7 +1229,7 @@ void CN64System::SyncSystem()
     }
     /*if (m_SyncCount > 4788000)
     {
-    if (memcmp(m_MMU_VM.Rdram(),m_SyncCPU->m_MMU_VM.Rdram(),RdramSize()) != 0)
+    if (memcmp(m_MMU_VM.Rdram(),m_SyncCPU->m_MMU_VM.Rdram(),g_GameSettings.rdramSize) != 0)
     {
     ErrorFound = true;
     }
@@ -1252,7 +1252,7 @@ void CN64System::SyncSystem()
     }
     }*/
 
-    if (bFastSP() && m_Recomp)
+    if (g_GameSettings.fastSP && m_Recomp)
     {
         uint32_t StackPointer = (m_Reg.m_GPR[29].W[0] & 0x1FFFFFFF);
         uint8_t * TargetStackPos = nullptr;
@@ -1345,7 +1345,7 @@ void CN64System::DumpSyncErrors()
         {
             Error.LogF("PROGRAM_COUNTER 0x%08X%08X, 0x%08X%08X\r\n", (uint32_t)(m_Reg.m_PROGRAM_COUNTER >> 32), (uint32_t)m_Reg.m_PROGRAM_COUNTER, (uint32_t)(m_SyncCPU->m_Reg.m_PROGRAM_COUNTER >> 32), (uint32_t)m_SyncCPU->m_Reg.m_PROGRAM_COUNTER);
         }
-        if (b32BitCore())
+        if (g_GameSettings.core32Bit)
         {
             for (count = 0; count < 32; count++)
             {
@@ -1435,7 +1435,7 @@ void CN64System::DumpSyncErrors()
         }
         m_TLB.RecordDifference(Error, m_SyncCPU->m_TLB);
         m_SystemTimer.RecordDifference(Error, m_SyncCPU->m_SystemTimer);
-        if (bFastSP() && m_Recomp)
+        if (g_GameSettings.fastSP && m_Recomp)
         {
             uint32_t StackPointer = (m_Reg.m_GPR[29].W[0] & 0x1FFFFFFF);
             uint8_t * TargetStackPos = nullptr;
@@ -1459,7 +1459,7 @@ void CN64System::DumpSyncErrors()
         }
 
         uint32_t *Rdram = (uint32_t *)m_MMU_VM.Rdram(), *Rdram2 = (uint32_t *)m_SyncCPU->m_MMU_VM.Rdram();
-        for (int z = 0, n = (RdramSize() >> 2); z < n; z++)
+        for (int z = 0, n = (g_GameSettings.rdramSize >> 2); z < n; z++)
         {
             if (Rdram[z] != Rdram2[z])
             {
@@ -1652,7 +1652,7 @@ bool CN64System::SaveState()
         zipOpenNewFileInZip(file, SaveFile.GetNameExtension().c_str(), nullptr, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_DEFAULT_COMPRESSION);
         zipWriteInFileInZip(file, &SaveID_0_1, sizeof(SaveID_0_1));
         zipWriteInFileInZip(file, &RdramSize, sizeof(uint32_t));
-        if (EnableDisk() && g_Disk)
+        if (g_GameSettings.enableDisk && g_Disk)
         {
             // Keep base ROM information (64DD IPL / compatible game ROM)
             zipWriteInFileInZip(file, &g_Rom->GetRomAddress()[0x10], 0x20);
@@ -1722,7 +1722,7 @@ bool CN64System::SaveState()
         hSaveFile.SeekToBegin();
         hSaveFile.Write(&SaveID_0_1, sizeof(uint32_t));
         hSaveFile.Write(&RdramSize, sizeof(uint32_t));
-        if (EnableDisk() && g_Disk)
+        if (g_GameSettings.enableDisk && g_Disk)
         {
             // Keep base ROM information (64DD IPL / compatible game ROM)
             hSaveFile.Write(&g_Rom->GetRomAddress()[0x10], 0x20);
@@ -1906,7 +1906,7 @@ bool CN64System::LoadState(const char * FileName)
 
                 uint8_t LoadHeader[64];
                 unzReadCurrentFile(file, LoadHeader, 0x40);
-                if (EnableDisk() && g_Disk)
+                if (g_GameSettings.enableDisk && g_Disk)
                 {
                     // Base ROM information (64DD IPL / compatible game ROM) and disk info check
                     if ((memcmp(LoadHeader, &g_Rom->GetRomAddress()[0x10], 0x20) != 0 ||
@@ -2049,7 +2049,7 @@ bool CN64System::LoadState(const char * FileName)
         // Check header
         uint8_t LoadHeader[64];
         hSaveFile.Read(LoadHeader, 0x40);
-        if (EnableDisk() && g_Disk)
+        if (g_GameSettings.enableDisk && g_Disk)
         {
             // Base ROM information (64DD IPL / compatible game ROM) and disk info check
             if ((memcmp(LoadHeader, &g_Rom->GetRomAddress()[0x10], 0x20) != 0 ||
@@ -2187,7 +2187,7 @@ bool CN64System::LoadState(const char * FileName)
     {
         m_Plugins->Gfx()->ViWidthChanged();
     }
-    m_Plugins->Audio()->DacrateChanged(SystemType());
+    m_Plugins->Audio()->DacrateChanged(g_GameSettings.systemType);
 
     // Fix random register
     while ((int)m_Reg.RANDOM_REGISTER < (int)m_Reg.WIRED_REGISTER)
@@ -2205,7 +2205,7 @@ bool CN64System::LoadState(const char * FileName)
     }
     m_CPU_Usage.ResetTimers();
     m_FPS.Reset(true);
-    if (bRecordRecompilerAsm() && m_Recomp)
+    if (g_DebugSettings.recordRecompilerAsm && m_Recomp)
     {
         m_Recomp->ResetLog();
     }
@@ -2213,7 +2213,7 @@ bool CN64System::LoadState(const char * FileName)
 #ifdef TEST_SP_TRACKING
     m_CurrentSP = GPR[29].UW[0];
 #endif
-    if (bFastSP() && m_Recomp)
+    if (g_GameSettings.fastSP && m_Recomp)
     {
         m_Recomp->ResetMemoryStackPos();
     }
@@ -2242,7 +2242,7 @@ bool CN64System::LoadState(const char * FileName)
 uint32_t CN64System::GetButtons(int32_t Control) const
 {
     CControl_Plugin::fnGetKeys GetKeys = m_Plugins->Control()->GetKeys;
-    if (!UpdateControllerOnRefresh() && GetKeys != nullptr)
+    if (!g_SystemSettings.updateControllerOnRefresh && GetKeys != nullptr)
     {
         BUTTONS Keys;
         memset(&Keys, 0, sizeof(Keys));
@@ -2310,7 +2310,7 @@ void CN64System::RefreshScreen()
     PROFILE_TIMERS CPU_UsageAddr = Timer_None /*, ProfilingAddr = Timer_None*/;
     uint32_t VI_INTR_TIME = 500000;
 
-    if (bShowCPUPer())
+    if (g_SystemSettings.showCpuPer)
     {
         CPU_UsageAddr = m_CPU_Usage.StartTimer(Timer_RefreshScreen);
     }
@@ -2322,18 +2322,18 @@ void CN64System::RefreshScreen()
     }
     else
     {
-        VI_INTR_TIME = (m_Reg.VI_V_SYNC_REG + 1) * ViRefreshRate();
+        VI_INTR_TIME = (m_Reg.VI_V_SYNC_REG + 1) * g_GameSettings.viRefreshRate;
         if ((m_Reg.VI_V_SYNC_REG % 1) != 0)
         {
             VI_INTR_TIME -= 38;
         }
     }
     g_SystemTimer->SetTimer(CSystemTimer::ViTimer, VI_INTR_TIME, true);
-    if (bFixedAudio())
+    if (g_GameSettings.fixedAudio)
     {
         m_MMU_VM.AudioInterface().SetViIntr(VI_INTR_TIME);
     }
-    if (UpdateControllerOnRefresh() && m_Plugins->Control()->GetKeys != nullptr)
+    if (g_SystemSettings.updateControllerOnRefresh && m_Plugins->Control()->GetKeys != nullptr)
     {
         BUTTONS Keys;
         memset(&Keys, 0, sizeof(Keys));
@@ -2345,40 +2345,40 @@ void CN64System::RefreshScreen()
         }
     }
 
-    if (bShowCPUPer())
+    if (g_SystemSettings.showCpuPer)
     {
         m_CPU_Usage.StartTimer(Timer_UpdateScreen);
     }
 
     WriteTrace(TraceVideoPlugin, TraceDebug, "UpdateScreen starting");
     m_Plugins->Gfx()->UpdateScreen();
-    if (g_Debugger != nullptr && HaveDebugger())
+    if (g_Debugger != nullptr && g_DebugSettings.haveDebugger)
     {
         g_Debugger->FrameDrawn();
     }
     WriteTrace(TraceVideoPlugin, TraceDebug, "UpdateScreen done");
     g_MMU->VideoInterface().UpdateFieldSerration((m_Reg.VI_STATUS_REG & 0x40) != 0);
 
-    if ((bBasicMode() || bLimitFPS()) && (!bSyncToAudio() || !FullSpeed()))
+    if ((g_SystemSettings.basicMode || g_SystemSettings.limitFps) && (!g_GameSettings.syncToAudio || !g_GameSettings.fullSpeed))
     {
-        if (bShowCPUPer())
+        if (g_SystemSettings.showCpuPer)
         {
             m_CPU_Usage.StartTimer(Timer_Idel);
         }
         uint32_t FrameRate;
-        if (m_Limiter.Timer_Process(&FrameRate) && bDisplayFrameRate())
+        if (m_Limiter.Timer_Process(&FrameRate) && g_SystemSettings.displayFrameRate)
         {
             m_FPS.DisplayViCounter(FrameRate, 0);
             m_bCleanFrameBox = true;
         }
-        if (bShowCPUPer())
+        if (g_SystemSettings.showCpuPer)
         {
             m_CPU_Usage.StopTimer();
         }
     }
-    else if (bDisplayFrameRate())
+    else if (g_SystemSettings.displayFrameRate)
     {
-        if (bShowCPUPer())
+        if (g_SystemSettings.showCpuPer)
         {
             m_CPU_Usage.StartTimer(Timer_UpdateFPS);
         }
@@ -2386,13 +2386,13 @@ void CN64System::RefreshScreen()
         m_bCleanFrameBox = true;
     }
 
-    if (m_bCleanFrameBox && !bDisplayFrameRate())
+    if (m_bCleanFrameBox && !g_SystemSettings.displayFrameRate)
     {
         m_FPS.Reset(true);
         m_bCleanFrameBox = false;
     }
 
-    if (bShowCPUPer())
+    if (g_SystemSettings.showCpuPer)
     {
         m_CPU_Usage.ShowCPU_Usage();
         m_CPU_Usage.StartTimer(CPU_UsageAddr != Timer_None ? CPU_UsageAddr : Timer_R4300);
@@ -2407,7 +2407,7 @@ void CN64System::RefreshScreen()
 void CN64System::TLB_Unmaped(uint32_t VAddr, uint32_t Len)
 {
     m_MMU_VM.TLB_Unmaped(VAddr, Len);
-    if (m_Recomp && bSMM_TLB())
+    if (m_Recomp && g_GameSettings.smmTlb)
     {
         m_Recomp->ClearRecompCode_Virt(VAddr, Len, CRecompiler::Remove_TLB);
     }
@@ -2416,4 +2416,14 @@ void CN64System::TLB_Unmaped(uint32_t VAddr, uint32_t Len)
 CProfiling & CN64System::CPUProfiler()
 {
     return m_CPU_Usage;
+}
+
+void CN64System::RefreshGameSettings(void)
+{
+    ::RefreshGameSettings();
+}
+
+void CN64System::RefreshSyncToAudio(void)
+{
+    ::RefreshSyncToAudio();
 }

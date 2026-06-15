@@ -45,7 +45,7 @@ void CX86RecompilerOps::x86CompilerBreakPoint()
     do
     {
         g_Debugger->WaitForStep();
-        if (CDebugSettings::SkipOp())
+        if (g_DebugSettings.skipOp)
         {
             // Skip command if instructed by the debugger
             g_Settings->SaveBool(Debugger_SkipOp, false);
@@ -61,21 +61,21 @@ void CX86RecompilerOps::x86CompilerBreakPoint()
             }
             continue;
         }
-        g_System->m_OpCodes.ExecuteOps(g_System->CountPerOp());
+        g_System->m_OpCodes.ExecuteOps(g_GameSettings.countPerOp);
         if (g_SyncSystem)
         {
-            g_System->UpdateSyncCPU(g_System->CountPerOp());
+            g_System->UpdateSyncCPU(g_GameSettings.countPerOp);
             g_System->SyncSystem();
         }
 
-    } while (CDebugSettings::isStepping());
+    } while (g_DebugSettings.stepping);
 
     if (g_System->PipelineStage() != PIPELINE_STAGE_NORMAL)
     {
-        g_System->m_OpCodes.ExecuteOps(g_System->CountPerOp());
+        g_System->m_OpCodes.ExecuteOps(g_GameSettings.countPerOp);
         if (g_SyncSystem)
         {
-            g_System->UpdateSyncCPU(g_System->CountPerOp());
+            g_System->UpdateSyncCPU(g_GameSettings.countPerOp);
             g_System->SyncSystem();
         }
     }
@@ -83,10 +83,10 @@ void CX86RecompilerOps::x86CompilerBreakPoint()
 
 void CX86RecompilerOps::x86BreakPointDelaySlot()
 {
-    g_System->m_OpCodes.ExecuteOps(g_System->CountPerOp());
+    g_System->m_OpCodes.ExecuteOps(g_GameSettings.countPerOp);
     if (g_SyncSystem)
     {
-        g_System->UpdateSyncCPU(g_System->CountPerOp());
+        g_System->UpdateSyncCPU(g_GameSettings.countPerOp);
         g_System->SyncSystem();
     }
     if (g_Debugger->ExecutionBP((uint32_t)g_Reg->m_PROGRAM_COUNTER))
@@ -95,10 +95,10 @@ void CX86RecompilerOps::x86BreakPointDelaySlot()
     }
     if (g_System->PipelineStage() != PIPELINE_STAGE_NORMAL)
     {
-        g_System->m_OpCodes.ExecuteOps(g_System->CountPerOp());
+        g_System->m_OpCodes.ExecuteOps(g_GameSettings.countPerOp);
         if (g_SyncSystem)
         {
-            g_System->UpdateSyncCPU(g_System->CountPerOp());
+            g_System->UpdateSyncCPU(g_GameSettings.countPerOp);
             g_System->SyncSystem();
         }
     }
@@ -114,8 +114,8 @@ void CX86RecompilerOps::x86MemoryBreakPoint()
     if (memory_write_in_delayslot)
     {
         g_Reg->m_PROGRAM_COUNTER -= 4;
-        *g_NextTimer += g_System->CountPerOp();
-        g_System->m_OpCodes.ExecuteOps(g_System->CountPerOp());
+        *g_NextTimer += g_GameSettings.countPerOp;
+        g_System->m_OpCodes.ExecuteOps(g_GameSettings.countPerOp);
     }
     x86CompilerBreakPoint();
 }
@@ -191,7 +191,9 @@ CX86RecompilerOps::CX86RecompilerOps(CN64System & m_System, CCodeBlock & CodeBlo
     m_RegWorkingSet(CodeBlock, m_Assembler),
     m_CompilePC(m_Instruction.Address32()),
     m_RegBeforeDelay(CodeBlock, m_Assembler),
-    m_EffectDelaySlot(false)
+    m_EffectDelaySlot(false),
+    m_ColdEntryOffset(0),
+    m_WarmEntryOffset(0)
 {
 }
 
@@ -300,12 +302,12 @@ void CX86RecompilerOps::PreCompileOpcode(void)
 
 void CX86RecompilerOps::PostCompileOpcode(void)
 {
-    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
-    if (!g_System->bRegCaching())
+    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
+    if (!g_GameSettings.regCaching)
     {
         m_RegWorkingSet.WriteBackRegisters();
     }
-    if (!g_System->bFPURegCaching())
+    if (!g_GameSettings.fpuRegCaching)
     {
         m_RegWorkingSet.UnMap_AllFPRs();
         if (m_RegWorkingSet.StackTopPos() != 0)
@@ -663,7 +665,7 @@ void CX86RecompilerOps::Compile_Branch(RecompilerBranchCompare CompareType, bool
         }
         else
         {
-            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
             m_Section->m_Jump.RegSet = m_RegWorkingSet;
             m_Section->m_Cont.RegSet = m_RegWorkingSet;
             m_Section->GenerateSectionLinkage();
@@ -675,7 +677,7 @@ void CX86RecompilerOps::Compile_Branch(RecompilerBranchCompare CompareType, bool
         if (m_CompilePC + ((int16_t)m_Opcode.offset << 2) + 4 == m_CompilePC + 8)
         {
             m_PipelineStage = PIPELINE_STAGE_NORMAL;
-            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
             SetCurrentPC((uint32_t)(GetCurrentPC() + 4));
             return;
         }
@@ -785,7 +787,7 @@ void CX86RecompilerOps::Compile_Branch(RecompilerBranchCompare CompareType, bool
     }
     else
     {
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
             g_Notify->DisplayError(stdstr_f("WTF\n\nBranch\nNextInstruction = %X", m_PipelineStage).c_str());
         }
@@ -802,7 +804,7 @@ void CX86RecompilerOps::Compile_BranchLikely(RecompilerBranchCompare CompareType
             asmjit::x86::Gp StatusReg = m_RegWorkingSet.Map_FPStatusReg();
             m_Assembler.and_(StatusReg, (uint32_t)(~0x0003F000));
         }
-        if (!g_System->bLinkBlocks() || (m_CompilePC & 0xFFC) == 0xFFC)
+        if (!GameLinkBlocks() || (m_CompilePC & 0xFFC) == 0xFFC)
         {
             m_Section->m_Jump.JumpPC = (uint32_t)m_CompilePC;
             m_Section->m_Jump.TargetPC = (uint32_t)(m_CompilePC + ((int16_t)m_Opcode.offset << 2) + 4);
@@ -872,7 +874,7 @@ void CX86RecompilerOps::Compile_BranchLikely(RecompilerBranchCompare CompareType
         m_RegWorkingSet.ResetX86Protection();
 
         m_Section->m_Cont.RegSet = m_RegWorkingSet;
-        m_Section->m_Cont.RegSet.SetBlockCycleCount(m_Section->m_Cont.RegSet.GetBlockCycleCount() + g_System->CountPerOp());
+        m_Section->m_Cont.RegSet.SetBlockCycleCount(m_Section->m_Cont.RegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         if (m_Section->m_Cont.LinkAddress != (uint32_t)-1)
         {
             m_Section->m_Cont.RegSet.UnMap_GPR(31, false);
@@ -913,10 +915,10 @@ void CX86RecompilerOps::Compile_BranchLikely(RecompilerBranchCompare CompareType
             m_PipelineStage = PIPELINE_STAGE_DO_DELAY_SLOT;
         }
 
-        if (g_System->bLinkBlocks())
+        if (GameLinkBlocks())
         {
             m_Section->m_Jump.RegSet = m_RegWorkingSet;
-            m_Section->m_Jump.RegSet.SetBlockCycleCount(m_Section->m_Jump.RegSet.GetBlockCycleCount() + g_System->CountPerOp());
+            m_Section->m_Jump.RegSet.SetBlockCycleCount(m_Section->m_Jump.RegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
             if (m_Section->m_Jump.LinkAddress != (uint32_t)-1)
             {
                 m_Section->m_Jump.RegSet.UnMap_GPR(31, false);
@@ -955,7 +957,7 @@ void CX86RecompilerOps::Compile_BranchLikely(RecompilerBranchCompare CompareType
         m_Section->GenerateSectionLinkage();
         m_PipelineStage = PIPELINE_STAGE_END_BLOCK;
     }
-    else if (HaveDebugger())
+    else if (g_DebugSettings.haveDebugger)
     {
         g_Notify->DisplayError(stdstr_f("WTF\n%s\nNextInstruction = %X", __FUNCTION__, m_PipelineStage).c_str());
     }
@@ -1129,7 +1131,7 @@ void CX86RecompilerOps::BNE_Compare()
         uint32_t KnownReg = m_RegWorkingSet.IsKnown(m_Opcode.rt) ? m_Opcode.rt : m_Opcode.rs;
         uint32_t UnknownReg = m_RegWorkingSet.IsKnown(m_Opcode.rt) ? m_Opcode.rs : m_Opcode.rt;
 
-        if (!b32BitCore())
+        if (!g_GameSettings.core32Bit)
         {
             if (m_RegWorkingSet.IsConst(KnownReg))
             {
@@ -1183,7 +1185,7 @@ void CX86RecompilerOps::BNE_Compare()
         }
         if (m_Section->m_Cont.FallThrough)
         {
-            if (b32BitCore())
+            if (g_GameSettings.core32Bit)
             {
                 m_Section->m_Jump.LinkLocation = m_Assembler.newLabel();
                 m_Assembler.JneLabel(m_Section->m_Jump.BranchLabel.c_str(), m_Section->m_Jump.LinkLocation);
@@ -1209,7 +1211,7 @@ void CX86RecompilerOps::BNE_Compare()
         {
             m_Section->m_Cont.LinkLocation = m_Assembler.newLabel();
             m_Assembler.JeLabel(m_Section->m_Cont.BranchLabel.c_str(), m_Section->m_Cont.LinkLocation);
-            if (b32BitCore())
+            if (g_GameSettings.core32Bit)
             {
                 m_Section->m_Jump.LinkLocation = m_Assembler.newLabel();
                 m_Assembler.JmpLabel(m_Section->m_Jump.BranchLabel.c_str(), m_Section->m_Jump.LinkLocation);
@@ -1225,7 +1227,7 @@ void CX86RecompilerOps::BNE_Compare()
     {
         asmjit::x86::Gp Reg;
 
-        if (!b32BitCore())
+        if (!g_GameSettings.core32Bit)
         {
             Reg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, m_Opcode.rt, true, false);
             m_Assembler.CompX86regToVariable(Reg, &m_Reg.m_GPR[m_Opcode.rs].W[1], CRegName::GPR_Hi[m_Opcode.rs]);
@@ -1245,7 +1247,7 @@ void CX86RecompilerOps::BNE_Compare()
         m_Assembler.CompX86regToVariable(Reg, &m_Reg.m_GPR[m_Opcode.rs].W[0], CRegName::GPR_Lo[m_Opcode.rs]);
         if (m_Section->m_Cont.FallThrough)
         {
-            if (b32BitCore())
+            if (g_GameSettings.core32Bit)
             {
                 m_Section->m_Jump.LinkLocation = m_Assembler.newLabel();
                 m_Assembler.JneLabel(m_Section->m_Jump.BranchLabel.c_str(), m_Section->m_Jump.LinkLocation);
@@ -1270,7 +1272,7 @@ void CX86RecompilerOps::BNE_Compare()
         {
             m_Section->m_Cont.LinkLocation = m_Assembler.newLabel();
             m_Assembler.JeLabel(m_Section->m_Cont.BranchLabel.c_str(), m_Section->m_Cont.LinkLocation);
-            if (b32BitCore())
+            if (g_GameSettings.core32Bit)
             {
                 m_Section->m_Jump.LinkLocation = m_Assembler.newLabel();
                 m_Assembler.JmpLabel(m_Section->m_Jump.BranchLabel.c_str(), m_Section->m_Jump.LinkLocation);
@@ -1309,7 +1311,7 @@ void CX86RecompilerOps::BEQ_Compare()
         }
         else if (m_RegWorkingSet.IsMapped(m_Opcode.rs) && m_RegWorkingSet.IsMapped(m_Opcode.rt))
         {
-            if ((m_RegWorkingSet.Is64Bit(m_Opcode.rs) || m_RegWorkingSet.Is64Bit(m_Opcode.rt)) && !b32BitCore())
+            if ((m_RegWorkingSet.Is64Bit(m_Opcode.rs) || m_RegWorkingSet.Is64Bit(m_Opcode.rt)) && !g_GameSettings.core32Bit)
             {
                 m_RegWorkingSet.ProtectGPR(m_Opcode.rs);
                 m_RegWorkingSet.ProtectGPR(m_Opcode.rt);
@@ -1452,7 +1454,7 @@ void CX86RecompilerOps::BEQ_Compare()
         uint32_t KnownReg = m_RegWorkingSet.IsKnown(m_Opcode.rt) ? m_Opcode.rt : m_Opcode.rs;
         uint32_t UnknownReg = m_RegWorkingSet.IsKnown(m_Opcode.rt) ? m_Opcode.rs : m_Opcode.rt;
 
-        if (!b32BitCore())
+        if (!g_GameSettings.core32Bit)
         {
             if (m_RegWorkingSet.IsConst(KnownReg))
             {
@@ -1516,7 +1518,7 @@ void CX86RecompilerOps::BEQ_Compare()
         }
         else if (m_Section->m_Jump.FallThrough)
         {
-            if (b32BitCore())
+            if (g_GameSettings.core32Bit)
             {
                 m_Section->m_Cont.LinkLocation = m_Assembler.newLabel();
                 m_Assembler.JneLabel(m_Section->m_Cont.BranchLabel.c_str(), m_Section->m_Cont.LinkLocation);
@@ -1538,7 +1540,7 @@ void CX86RecompilerOps::BEQ_Compare()
     else
     {
         asmjit::x86::Gp Reg;
-        if (!b32BitCore())
+        if (!g_GameSettings.core32Bit)
         {
             Reg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, m_Opcode.rs, true, false);
             m_Assembler.CompX86regToVariable(Reg, &m_Reg.m_GPR[m_Opcode.rt].W[1], CRegName::GPR_Hi[m_Opcode.rt]);
@@ -1566,7 +1568,7 @@ void CX86RecompilerOps::BEQ_Compare()
         }
         else if (m_Section->m_Jump.FallThrough)
         {
-            if (b32BitCore())
+            if (g_GameSettings.core32Bit)
             {
                 m_Section->m_Cont.LinkLocation = m_Assembler.newLabel();
                 m_Assembler.JneLabel(m_Section->m_Cont.BranchLabel.c_str(), m_Section->m_Cont.LinkLocation);
@@ -1579,7 +1581,7 @@ void CX86RecompilerOps::BEQ_Compare()
         }
         else
         {
-            if (b32BitCore())
+            if (g_GameSettings.core32Bit)
             {
                 m_Section->m_Cont.LinkLocation = m_Assembler.newLabel();
                 m_Assembler.JneLabel(m_Section->m_Cont.BranchLabel.c_str(), m_Section->m_Cont.LinkLocation);
@@ -1647,7 +1649,7 @@ void CX86RecompilerOps::BGTZ_Compare()
             m_Assembler.JmpLabel(m_Section->m_Jump.BranchLabel.c_str(), m_Section->m_Jump.LinkLocation);
         }
     }
-    else if (m_RegWorkingSet.IsUnknown(m_Opcode.rs) && b32BitCore())
+    else if (m_RegWorkingSet.IsUnknown(m_Opcode.rs) && g_GameSettings.core32Bit)
     {
         m_Assembler.CompConstToVariable(&m_Reg.m_GPR[m_Opcode.rs].W[0], CRegName::GPR_Lo[m_Opcode.rs], 0);
         if (m_Section->m_Jump.FallThrough)
@@ -1866,7 +1868,7 @@ void CX86RecompilerOps::BLEZ_Compare()
     {
         asmjit::Label Jump;
 
-        if (!b32BitCore())
+        if (!g_GameSettings.core32Bit)
         {
             m_Assembler.CompConstToVariable(&m_Reg.m_GPR[m_Opcode.rs].W[1], CRegName::GPR_Hi[m_Opcode.rs], 0);
             if (m_Section->m_Jump.FallThrough)
@@ -1893,7 +1895,7 @@ void CX86RecompilerOps::BLEZ_Compare()
             m_Assembler.CompConstToVariable(&m_Reg.m_GPR[m_Opcode.rs].W[0], CRegName::GPR_Lo[m_Opcode.rs], 0);
             if (m_Section->m_Jump.FallThrough)
             {
-                if (b32BitCore())
+                if (g_GameSettings.core32Bit)
                 {
                     m_Section->m_Cont.LinkLocation = m_Assembler.newLabel();
                     m_Assembler.JneLabel(m_Section->m_Cont.BranchLabel.c_str(), m_Section->m_Cont.LinkLocation);
@@ -2037,7 +2039,7 @@ void CX86RecompilerOps::BLTZ_Compare()
     }
     else if (m_RegWorkingSet.IsUnknown(m_Opcode.rs))
     {
-        if (b32BitCore())
+        if (g_GameSettings.core32Bit)
         {
             m_Assembler.CompConstToVariable(&m_Reg.m_GPR[m_Opcode.rs].W[0], CRegName::GPR_Lo[m_Opcode.rs], 0);
         }
@@ -2145,7 +2147,7 @@ void CX86RecompilerOps::BGEZ_Compare()
     }
     else
     {
-        if (b32BitCore())
+        if (g_GameSettings.core32Bit)
         {
             m_Assembler.CompConstToVariable(&m_Reg.m_GPR[m_Opcode.rs].W[0], CRegName::GPR_Lo[m_Opcode.rs], 0);
         }
@@ -2272,7 +2274,7 @@ void CX86RecompilerOps::J()
         m_Section->GenerateSectionLinkage();
         m_PipelineStage = PIPELINE_STAGE_END_BLOCK;
     }
-    else if (HaveDebugger())
+    else if (g_DebugSettings.haveDebugger)
     {
         g_Notify->DisplayError(stdstr_f("WTF\n\nJ\nNextInstruction = %X", m_PipelineStage).c_str());
     }
@@ -2342,7 +2344,7 @@ void CX86RecompilerOps::JAL()
 
 void CX86RecompilerOps::ADDI()
 {
-    if (g_System->bFastSP() && m_Opcode.rs == 29 && m_Opcode.rt == 29)
+    if (g_GameSettings.fastSP && m_Opcode.rs == 29 && m_Opcode.rt == 29)
     {
         m_Assembler.AddConstToX86Reg(m_RegWorkingSet.Map_MemoryStack(x86Reg_Unknown, true), (int16_t)m_Opcode.immediate);
     }
@@ -2354,7 +2356,7 @@ void CX86RecompilerOps::ADDI()
         int32_t sum = rs + imm;
         if ((~(rs ^ imm) & (rs ^ sum)) & 0x80000000)
         {
-            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
             CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_ExceptionOverflow, true, nullptr);
             m_PipelineStage = PIPELINE_STAGE_END_BLOCK;
         }
@@ -2373,16 +2375,16 @@ void CX86RecompilerOps::ADDI()
         m_RegWorkingSet.ProtectGPR(m_Opcode.rt);
         asmjit::x86::Gp Reg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, m_Opcode.rs, false, false);
         m_Assembler.AddConstToX86Reg(Reg, (int16_t)m_Opcode.immediate);
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_ExceptionOverflow, false, &CX86Ops::JoLabel);
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
         if (m_Opcode.rt != 0)
         {
             m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rt, true, -1);
             m_Assembler.mov(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rt), Reg);
         }
     }
-    if (g_System->bFastSP() && m_Opcode.rt == 29 && m_Opcode.rs != 29)
+    if (g_GameSettings.fastSP && m_Opcode.rt == 29 && m_Opcode.rs != 29)
     {
         m_RegWorkingSet.ResetX86Protection();
         ResetMemoryStack();
@@ -2396,7 +2398,7 @@ void CX86RecompilerOps::ADDIU()
         return;
     }
 
-    if (g_System->bFastSP())
+    if (g_GameSettings.fastSP)
     {
         if (m_Opcode.rs == 29 && m_Opcode.rt == 29)
         {
@@ -2420,7 +2422,7 @@ void CX86RecompilerOps::ADDIU()
         m_Assembler.AddConstToX86Reg(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rt), (int16_t)m_Opcode.immediate);
     }
 
-    if (g_System->bFastSP() && m_Opcode.rt == 29 && m_Opcode.rs != 29)
+    if (g_GameSettings.fastSP && m_Opcode.rt == 29 && m_Opcode.rs != 29)
     {
         m_RegWorkingSet.ResetX86Protection();
         ResetMemoryStack();
@@ -2471,7 +2473,7 @@ void CX86RecompilerOps::SLTIU()
             m_Assembler.MoveVariableToX86reg(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rt), &m_BranchCompare, "m_BranchCompare");
         }
     }
-    else if (b32BitCore())
+    else if (g_GameSettings.core32Bit)
     {
         m_Assembler.CompConstToVariable(&m_Reg.m_GPR[m_Opcode.rs].W[0], CRegName::GPR_Lo[m_Opcode.rs], (int16_t)m_Opcode.immediate);
         m_Assembler.SetbVariable(&m_BranchCompare, "m_BranchCompare");
@@ -2546,7 +2548,7 @@ void CX86RecompilerOps::SLTI()
             }
         }
     }
-    else if (b32BitCore())
+    else if (g_GameSettings.core32Bit)
     {
         m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rt, false, -1);
         m_Assembler.CompConstToVariable(&m_Reg.m_GPR[m_Opcode.rs].W[0], CRegName::GPR_Lo[m_Opcode.rs], (int16_t)m_Opcode.immediate);
@@ -2620,7 +2622,7 @@ void CX86RecompilerOps::ORI()
         return;
     }
 
-    if (g_System->bFastSP() && m_Opcode.rs == 29 && m_Opcode.rt == 29)
+    if (g_GameSettings.fastSP && m_Opcode.rs == 29 && m_Opcode.rt == 29)
     {
         m_Assembler.or_(m_RegWorkingSet.Map_MemoryStack(x86Reg_Unknown, true), m_Opcode.immediate);
     }
@@ -2638,7 +2640,7 @@ void CX86RecompilerOps::ORI()
     }
     else if (m_RegWorkingSet.IsMapped(m_Opcode.rs))
     {
-        if (b32BitCore())
+        if (g_GameSettings.core32Bit)
         {
             m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rt, true, m_Opcode.rs);
         }
@@ -2657,7 +2659,7 @@ void CX86RecompilerOps::ORI()
     }
     else
     {
-        if (b32BitCore())
+        if (g_GameSettings.core32Bit)
         {
             m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rt, true, m_Opcode.rs);
         }
@@ -2668,7 +2670,7 @@ void CX86RecompilerOps::ORI()
         m_Assembler.or_(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rt), m_Opcode.immediate);
     }
 
-    if (g_System->bFastSP() && m_Opcode.rt == 29 && m_Opcode.rs != 29)
+    if (g_GameSettings.fastSP && m_Opcode.rt == 29 && m_Opcode.rs != 29)
     {
         m_RegWorkingSet.ResetX86Protection();
         ResetMemoryStack();
@@ -2699,7 +2701,7 @@ void CX86RecompilerOps::XORI()
         {
             m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rt, m_RegWorkingSet.IsSigned(m_Opcode.rs), m_Opcode.rs);
         }
-        else if (b32BitCore())
+        else if (g_GameSettings.core32Bit)
         {
             m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rt, true, m_Opcode.rs);
         }
@@ -2721,7 +2723,7 @@ void CX86RecompilerOps::LUI()
         return;
     }
 
-    if (g_System->bFastSP() && m_Opcode.rt == 29)
+    if (g_GameSettings.fastSP && m_Opcode.rt == 29)
     {
         asmjit::x86::Gp Reg = m_RegWorkingSet.Map_MemoryStack(x86Reg_Unknown, true, false);
         uint32_t Address;
@@ -2752,7 +2754,7 @@ void CX86RecompilerOps::DADDI()
         int64_t sum = rs + imm;
         if ((~(rs ^ imm) & (rs ^ sum)) & 0x8000000000000000)
         {
-            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
             CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_ExceptionOverflow, true, nullptr);
             m_PipelineStage = PIPELINE_STAGE_END_BLOCK;
         }
@@ -2785,9 +2787,9 @@ void CX86RecompilerOps::DADDI()
 
         m_Assembler.add(RegLo, (uint32_t)imm);
         m_Assembler.adc(RegHi, (uint32_t)(imm >> 32));
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_ExceptionOverflow, false, &CX86Ops::JoLabel);
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
         if (m_Opcode.rt != 0)
         {
             m_RegWorkingSet.UnProtectGPR(m_Opcode.rs);
@@ -2889,7 +2891,7 @@ void CX86RecompilerOps::CACHE()
     case 25:
         break;
     default:
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
             g_Notify->DisplayError(stdstr_f("cache: %d", m_Opcode.rt).c_str());
         }
@@ -2947,7 +2949,7 @@ void CX86RecompilerOps::LB_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
     {
         m_Assembler.MoveConstToX86reg(Reg, 0);
         m_CodeBlock.Log("%s\nFailed to translate address %08X", __FUNCTION__, VAddr);
-        if (BreakOnUnhandledMemory())
+        if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -3006,7 +3008,7 @@ void CX86RecompilerOps::LB_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
         else
         {
             m_Assembler.MoveConstToX86reg(Reg, 0);
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -3042,7 +3044,7 @@ void CX86RecompilerOps::LB_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
         break;
     default:
         m_Assembler.MoveConstToX86reg(Reg, 0);
-        if (BreakOnUnhandledMemory())
+        if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -3064,7 +3066,7 @@ void CX86RecompilerOps::LH_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
     {
         m_Assembler.MoveConstToX86reg(Reg, 0);
         m_CodeBlock.Log("%s\nFailed to translate address %08X", __FUNCTION__, VAddr);
-        if (BreakOnUnhandledMemory())
+        if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -3122,7 +3124,7 @@ void CX86RecompilerOps::LH_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
         break;
     default:
         m_Assembler.MoveConstToX86reg(Reg, 0);
-        if (BreakOnUnhandledMemory())
+        if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -3131,7 +3133,7 @@ void CX86RecompilerOps::LH_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
 
 void CX86RecompilerOps::RESERVED31()
 {
-    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_IllegalInstruction, true, nullptr);
     m_PipelineStage = PIPELINE_STAGE_END_BLOCK;
 }
@@ -3146,7 +3148,7 @@ void CX86RecompilerOps::LB()
     if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = (m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset);
-        if (HaveReadBP() && g_Debugger->ReadBP8(Address))
+        if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP8(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -3168,7 +3170,7 @@ void CX86RecompilerOps::LH()
     if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = (m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset);
-        if (HaveReadBP() && g_Debugger->ReadBP16(Address))
+        if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP16(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -3193,7 +3195,7 @@ void CX86RecompilerOps::LWL()
     {
         uint32_t Address = m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset;
         uint32_t Offset = Address & 3;
-        if (HaveReadBP() && g_Debugger->ReadBP32(Address))
+        if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP32(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -3236,7 +3238,7 @@ void CX86RecompilerOps::LW()
 
 void CX86RecompilerOps::LW(bool ResultSigned, bool bRecordLLBit)
 {
-    if (!HaveReadBP() && m_Opcode.base == 29 && g_System->bFastSP() && m_Opcode.rt != 0)
+    if (!g_DebugSettings.haveReadBP && m_Opcode.base == 29 && g_GameSettings.fastSP && m_Opcode.rt != 0)
     {
         m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rt, ResultSigned, -1);
         asmjit::x86::Gp TempReg1 = m_RegWorkingSet.Map_MemoryStack(x86Reg_Unknown, true);
@@ -3259,7 +3261,7 @@ void CX86RecompilerOps::LW(bool ResultSigned, bool bRecordLLBit)
         {
             return;
         }
-        if (HaveReadBP() && g_Debugger->ReadBP32(Address))
+        if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP32(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -3286,7 +3288,7 @@ void CX86RecompilerOps::LW(bool ResultSigned, bool bRecordLLBit)
             RecordLLAddress(AddressReg);
         }
     }
-    if (g_System->bFastSP() && m_Opcode.rt == 29)
+    if (g_GameSettings.fastSP && m_Opcode.rt == 29)
     {
         m_RegWorkingSet.ResetX86Protection();
         ResetMemoryStack();
@@ -3378,7 +3380,7 @@ void CX86RecompilerOps::LW_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
             case 0x0430000C: m_Assembler.MoveVariableToX86reg(Reg, &g_Reg->MI_INTR_MASK_REG, "MI_INTR_MASK_REG"); break;
             default:
                 m_Assembler.MoveConstToX86reg(Reg, 0);
-                if (BreakOnUnhandledMemory())
+                if (g_DebugSettings.breakOnUnhandledMemory)
                 {
                     g_Notify->BreakPoint(__FILE__, __LINE__);
                 }
@@ -3420,7 +3422,7 @@ void CX86RecompilerOps::LW_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
             case 0x04600030: m_Assembler.MoveVariableToX86reg(Reg, &g_Reg->PI_BSD_DOM2_RLS_REG, "PI_BSD_DOM2_RLS_REG"); break;
             default:
                 m_Assembler.MoveConstToX86reg(Reg, 0);
-                if (BreakOnUnhandledMemory())
+                if (g_DebugSettings.breakOnUnhandledMemory)
                 {
                     g_Notify->BreakPoint(__FILE__, __LINE__);
                 }
@@ -3433,7 +3435,7 @@ void CX86RecompilerOps::LW_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
             case 0x04700010: m_Assembler.MoveVariableToX86reg(Reg, &g_Reg->RI_REFRESH_REG, "RI_REFRESH_REG"); break;
             default:
                 m_Assembler.MoveConstToX86reg(Reg, 0);
-                if (BreakOnUnhandledMemory())
+                if (g_DebugSettings.breakOnUnhandledMemory)
                 {
                     g_Notify->BreakPoint(__FILE__, __LINE__);
                 }
@@ -3445,7 +3447,7 @@ void CX86RecompilerOps::LW_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
             case 0x04800018: m_Assembler.MoveVariableToX86reg(Reg, &g_Reg->SI_STATUS_REG, "SI_STATUS_REG"); break;
             default:
                 m_Assembler.MoveConstToX86reg(Reg, 0);
-                if (BreakOnUnhandledMemory())
+                if (g_DebugSettings.breakOnUnhandledMemory)
                 {
                     g_Notify->BreakPoint(__FILE__, __LINE__);
                 }
@@ -3453,7 +3455,7 @@ void CX86RecompilerOps::LW_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
             break;
         case 0x05000000:
             // 64DD registers
-            if (EnableDisk())
+            if (g_GameSettings.enableDisk)
             {
                 switch (PAddr)
                 {
@@ -3483,7 +3485,7 @@ void CX86RecompilerOps::LW_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
                 case 0x05000548: m_Assembler.MoveVariableToX86reg(Reg, &g_Reg->ASIC_TEST_PIN_SEL, "ASIC_TEST_PIN_SEL"); break;
                 default:
                     m_Assembler.MoveConstToX86reg(Reg, 0);
-                    if (BreakOnUnhandledMemory())
+                    if (g_DebugSettings.breakOnUnhandledMemory)
                     {
                         g_Notify->BreakPoint(__FILE__, __LINE__);
                     }
@@ -3520,7 +3522,7 @@ void CX86RecompilerOps::LW_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VA
             else
             {
                 m_Assembler.MoveConstToX86reg(Reg, ((PAddr & 0xFFFF) << 16) | (PAddr & 0xFFFF));
-                if (BreakOnUnhandledMemory())
+                if (g_DebugSettings.breakOnUnhandledMemory)
                 {
                     g_Notify->BreakPoint(__FILE__, __LINE__);
                 }
@@ -3539,7 +3541,7 @@ void CX86RecompilerOps::LBU()
     if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = (m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset);
-        if (HaveReadBP() && g_Debugger->ReadBP8(Address))
+        if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP8(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -3564,7 +3566,7 @@ void CX86RecompilerOps::LHU()
     if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = (m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset);
-        if (HaveReadBP() && g_Debugger->ReadBP16(Address))
+        if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP16(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -3590,7 +3592,7 @@ void CX86RecompilerOps::LWR()
     {
         uint32_t Address = m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset;
         uint32_t Offset = Address & 3;
-        if (HaveReadBP() && g_Debugger->ReadBP32(Address))
+        if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP32(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -3635,7 +3637,7 @@ void CX86RecompilerOps::SB()
     if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = (m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset);
-        if (HaveWriteBP() && g_Debugger->WriteBP8(Address))
+        if (g_DebugSettings.haveWriteBP && g_Debugger->WriteBP8(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -3679,7 +3681,7 @@ void CX86RecompilerOps::SH()
     if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = (m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset);
-        if (HaveWriteBP() && g_Debugger->WriteBP16(Address))
+        if (g_DebugSettings.haveWriteBP && g_Debugger->WriteBP16(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -3721,7 +3723,7 @@ void CX86RecompilerOps::SWL()
         uint32_t Address;
 
         Address = m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset;
-        if (HaveWriteBP() && g_Debugger->WriteBP32(Address))
+        if (g_DebugSettings.haveWriteBP && g_Debugger->WriteBP32(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -3792,7 +3794,7 @@ void CX86RecompilerOps::SW()
 
 void CX86RecompilerOps::SW(bool bCheckLLbit)
 {
-    if (!HaveWriteBP() && m_Opcode.base == 29 && g_System->bFastSP())
+    if (!g_DebugSettings.haveWriteBP && m_Opcode.base == 29 && g_GameSettings.fastSP)
     {
         if (bCheckLLbit)
         {
@@ -3847,7 +3849,7 @@ void CX86RecompilerOps::SW(bool bCheckLLbit)
             m_Assembler.test(asmjit::x86::al, asmjit::x86::al);
             m_RegWorkingSet.AfterCallDirect();
             CRegInfo ExitRegSet = m_RegWorkingSet;
-            ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+            ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
             CompileExit((uint32_t)-1, (uint32_t)-1, ExitRegSet, ExitReason_Exception, false, &CX86Ops::JeLabel);
             Store64AddrDone = m_Assembler.newLabel();
             m_Assembler.JmpLabel("Store64AddrDone", Store64AddrDone);
@@ -3860,7 +3862,7 @@ void CX86RecompilerOps::SW(bool bCheckLLbit)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
-            if (HaveWriteBP() && g_Debugger->WriteBP32(Address))
+            if (g_DebugSettings.haveWriteBP && g_Debugger->WriteBP32(Address))
             {
                 FoundMemoryBreakpoint();
                 return;
@@ -3928,7 +3930,7 @@ void CX86RecompilerOps::SWR()
     if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset;
-        if (HaveWriteBP() && g_Debugger->WriteBP32(Address))
+        if (g_DebugSettings.haveWriteBP && g_Debugger->WriteBP32(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -4056,7 +4058,7 @@ void CX86RecompilerOps::LWC1()
     if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset;
-        if (HaveReadBP() && g_Debugger->ReadBP32(Address))
+        if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP32(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -4086,7 +4088,7 @@ void CX86RecompilerOps::LDC1()
     if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset;
-        if (HaveReadBP() && g_Debugger->ReadBP64(Address))
+        if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP64(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -4127,7 +4129,7 @@ void CX86RecompilerOps::LD()
         return;
     }
 
-    if (!HaveReadBP() && m_Opcode.base == 29 && g_System->bFastSP())
+    if (!g_DebugSettings.haveReadBP && m_Opcode.base == 29 && g_GameSettings.fastSP)
     {
         m_RegWorkingSet.Map_GPR_64bit(m_Opcode.rt, -1);
         asmjit::x86::Gp StackReg = m_RegWorkingSet.Map_MemoryStack(x86Reg_Unknown, true);
@@ -4137,7 +4139,7 @@ void CX86RecompilerOps::LD()
     else if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset;
-        if (HaveReadBP() && g_Debugger->ReadBP64(Address))
+        if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP64(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -4145,7 +4147,7 @@ void CX86RecompilerOps::LD()
         m_RegWorkingSet.Map_GPR_64bit(m_Opcode.rt, -1);
         LW_KnownAddress(m_RegWorkingSet.GetMipsRegMapHi(m_Opcode.rt), Address);
         LW_KnownAddress(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rt), Address + 4);
-        if (g_System->bFastSP() && m_Opcode.rt == 29)
+        if (g_GameSettings.fastSP && m_Opcode.rt == 29)
         {
             ResetMemoryStack();
         }
@@ -4162,7 +4164,7 @@ void CX86RecompilerOps::LD()
         asmjit::x86::Gp AddressReg = x86Reg_Unknown;
         CompileLoadMemoryValue(AddressReg, m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rt), m_RegWorkingSet.GetMipsRegMapHi(m_Opcode.rt), 64, false);
     }
-    if (g_System->bFastSP() && m_Opcode.rt == 29)
+    if (g_GameSettings.fastSP && m_Opcode.rt == 29)
     {
         m_RegWorkingSet.ResetX86Protection();
         ResetMemoryStack();
@@ -4181,7 +4183,7 @@ void CX86RecompilerOps::SWC1()
     if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset;
-        if (HaveWriteBP() && g_Debugger->WriteBP32(Address))
+        if (g_DebugSettings.haveWriteBP && g_Debugger->WriteBP32(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -4210,7 +4212,7 @@ void CX86RecompilerOps::SDC1()
     if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset;
-        if (HaveWriteBP() && g_Debugger->WriteBP32(Address))
+        if (g_DebugSettings.haveWriteBP && g_Debugger->WriteBP32(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -4244,7 +4246,7 @@ void CX86RecompilerOps::SD()
     if (m_RegWorkingSet.IsConst(m_Opcode.base))
     {
         uint32_t Address = m_RegWorkingSet.GetMipsRegLo(m_Opcode.base) + (int16_t)m_Opcode.offset;
-        if (HaveWriteBP() && g_Debugger->WriteBP32(Address))
+        if (g_DebugSettings.haveWriteBP && g_Debugger->WriteBP32(Address))
         {
             FoundMemoryBreakpoint();
             return;
@@ -4382,7 +4384,7 @@ void CX86RecompilerOps::SPECIAL_SRA()
         m_RegWorkingSet.SetMipsRegState(m_Opcode.rd, CRegInfo::STATE_CONST_32_SIGN);
         return;
     }
-    if (b32BitCore())
+    if (g_GameSettings.core32Bit)
     {
         m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, m_Opcode.rt);
         m_Assembler.sar(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rd), (uint8_t)m_Opcode.sa);
@@ -4480,7 +4482,7 @@ void CX86RecompilerOps::SPECIAL_SRAV()
             m_RegWorkingSet.SetMipsRegState(m_Opcode.rd, CRegInfo::STATE_CONST_32_SIGN);
             return;
         }
-        if (b32BitCore())
+        if (g_GameSettings.core32Bit)
         {
             m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, m_Opcode.rt);
             m_Assembler.sar(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rd), (uint8_t)Shift);
@@ -4494,7 +4496,7 @@ void CX86RecompilerOps::SPECIAL_SRAV()
         return;
     }
     m_RegWorkingSet.Map_TempReg(asmjit::x86::ecx, m_Opcode.rs, false, false);
-    if (b32BitCore())
+    if (g_GameSettings.core32Bit)
     {
         m_Assembler.and_(asmjit::x86::ecx, 0x1F);
         m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, m_Opcode.rt);
@@ -4603,7 +4605,7 @@ void CX86RecompilerOps::SPECIAL_JR()
         }
         m_PipelineStage = PIPELINE_STAGE_END_BLOCK;
     }
-    else if (HaveDebugger())
+    else if (g_DebugSettings.haveDebugger)
     {
         g_Notify->DisplayError(stdstr_f("WTF\n\nBranch\nNextInstruction = %X", m_PipelineStage).c_str());
     }
@@ -4700,7 +4702,7 @@ void CX86RecompilerOps::SPECIAL_JALR()
         }
         m_PipelineStage = PIPELINE_STAGE_END_BLOCK;
     }
-    else if (HaveDebugger())
+    else if (g_DebugSettings.haveDebugger)
     {
         g_Notify->DisplayError(stdstr_f("WTF\n\nBranch\nNextInstruction = %X", m_PipelineStage).c_str());
     }
@@ -4708,7 +4710,7 @@ void CX86RecompilerOps::SPECIAL_JALR()
 
 void CX86RecompilerOps::SPECIAL_SYSCALL()
 {
-    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_DoSysCall, true, nullptr);
     if (m_PipelineStage == PIPELINE_STAGE_NORMAL)
     {
@@ -4718,7 +4720,7 @@ void CX86RecompilerOps::SPECIAL_SYSCALL()
 
 void CX86RecompilerOps::SPECIAL_BREAK()
 {
-    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_Break, true, nullptr);
     if (m_PipelineStage == PIPELINE_STAGE_NORMAL)
     {
@@ -5352,7 +5354,7 @@ void CX86RecompilerOps::SPECIAL_ADD()
         int32_t Sum = Val1 + Val2;
         if ((~(Val1 ^ Val2) & (Val1 ^ Sum)) & 0x80000000)
         {
-            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
             CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_ExceptionOverflow, true, nullptr);
             m_PipelineStage = PIPELINE_STAGE_END_BLOCK;
         }
@@ -5382,13 +5384,13 @@ void CX86RecompilerOps::SPECIAL_ADD()
     {
         m_Assembler.AddVariableToX86reg(Reg, &m_Reg.m_GPR[source2].W[0], CRegName::GPR_Lo[source2]);
     }
-    if (g_System->bFastSP() && m_Opcode.rd == 29)
+    if (g_GameSettings.fastSP && m_Opcode.rd == 29)
     {
         ResetMemoryStack();
     }
-    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_ExceptionOverflow, false, &CX86Ops::JoLabel);
-    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
     if (m_Opcode.rd != 0)
     {
         m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, -1);
@@ -5431,7 +5433,7 @@ void CX86RecompilerOps::SPECIAL_ADDU()
     {
         m_Assembler.AddVariableToX86reg(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rd), &m_Reg.m_GPR[source2].W[0], CRegName::GPR_Lo[source2]);
     }
-    if (g_System->bFastSP() && m_Opcode.rd == 29)
+    if (g_GameSettings.fastSP && m_Opcode.rd == 29)
     {
         ResetMemoryStack();
     }
@@ -5447,7 +5449,7 @@ void CX86RecompilerOps::SPECIAL_SUB()
 
         if (((rs ^ rt) & (rs ^ sub)) & 0x80000000)
         {
-            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
             CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_ExceptionOverflow, true, nullptr);
             m_PipelineStage = PIPELINE_STAGE_END_BLOCK;
         }
@@ -5477,16 +5479,16 @@ void CX86RecompilerOps::SPECIAL_SUB()
         {
             m_Assembler.SubVariableFromX86reg(Reg, &m_Reg.m_GPR[m_Opcode.rt].W[0], CRegName::GPR_Lo[m_Opcode.rt]);
         }
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_ExceptionOverflow, false, &CX86Ops::JoLabel);
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
         if (m_Opcode.rd != 0)
         {
             m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, -1);
             m_Assembler.mov(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rd), Reg);
         }
     }
-    if (g_System->bFastSP() && m_Opcode.rd == 29)
+    if (g_GameSettings.fastSP && m_Opcode.rd == 29)
     {
         ResetMemoryStack();
     }
@@ -5535,7 +5537,7 @@ void CX86RecompilerOps::SPECIAL_SUBU()
         }
     }
 
-    if (g_System->bFastSP() && m_Opcode.rd == 29)
+    if (g_GameSettings.fastSP && m_Opcode.rd == 29)
     {
         ResetMemoryStack();
     }
@@ -5729,7 +5731,7 @@ void CX86RecompilerOps::SPECIAL_AND()
             m_RegWorkingSet.ProtectGPR(KnownReg);
             if (KnownReg == m_Opcode.rd)
             {
-                if (m_RegWorkingSet.Is64Bit(KnownReg) || !b32BitCore())
+                if (m_RegWorkingSet.Is64Bit(KnownReg) || !g_GameSettings.core32Bit)
                 {
                     m_RegWorkingSet.Map_GPR_64bit(m_Opcode.rd, KnownReg);
                     m_Assembler.AndVariableToX86Reg(m_RegWorkingSet.GetMipsRegMapHi(m_Opcode.rd), &m_Reg.m_GPR[UnknownReg].W[1], CRegName::GPR_Hi[UnknownReg]);
@@ -5759,7 +5761,7 @@ void CX86RecompilerOps::SPECIAL_AND()
     }
     else
     {
-        if (b32BitCore())
+        if (g_GameSettings.core32Bit)
         {
             m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, m_Opcode.rt);
         }
@@ -5886,7 +5888,7 @@ void CX86RecompilerOps::SPECIAL_OR()
             uint64_t Value = m_RegWorkingSet.Is64Bit(KnownReg) ? m_RegWorkingSet.GetMipsReg(KnownReg) : m_RegWorkingSet.GetMipsRegLo_S(KnownReg);
             uint32_t dwValue = (uint32_t)(Value & 0xFFFFFFFF);
 
-            if (b32BitCore() && m_RegWorkingSet.Is32Bit(KnownReg))
+            if (g_GameSettings.core32Bit && m_RegWorkingSet.Is32Bit(KnownReg))
             {
                 m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, UnknownReg);
                 if (dwValue != 0)
@@ -5909,7 +5911,7 @@ void CX86RecompilerOps::SPECIAL_OR()
         }
         else
         {
-            if (b32BitCore())
+            if (g_GameSettings.core32Bit)
             {
                 m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, KnownReg);
                 m_Assembler.OrVariableToX86Reg(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rd), &m_Reg.m_GPR[UnknownReg].W[0], CRegName::GPR_Lo[UnknownReg]);
@@ -5924,7 +5926,7 @@ void CX86RecompilerOps::SPECIAL_OR()
     }
     else
     {
-        if (b32BitCore())
+        if (g_GameSettings.core32Bit)
         {
             m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, m_Opcode.rt);
             m_Assembler.OrVariableToX86Reg(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rd), &m_Reg.m_GPR[m_Opcode.rs].W[0], CRegName::GPR_Lo[m_Opcode.rs]);
@@ -5936,7 +5938,7 @@ void CX86RecompilerOps::SPECIAL_OR()
             m_Assembler.OrVariableToX86Reg(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rd), &m_Reg.m_GPR[m_Opcode.rs].W[0], CRegName::GPR_Lo[m_Opcode.rs]);
         }
     }
-    if (g_System->bFastSP() && m_Opcode.rd == 29)
+    if (g_GameSettings.fastSP && m_Opcode.rd == 29)
     {
         m_RegWorkingSet.ResetX86Protection();
         ResetMemoryStack();
@@ -5968,7 +5970,7 @@ void CX86RecompilerOps::SPECIAL_XOR()
 
             if (m_RegWorkingSet.Is64Bit(m_Opcode.rt) || m_RegWorkingSet.Is64Bit(m_Opcode.rs))
             {
-                if (HaveDebugger())
+                if (g_DebugSettings.haveDebugger)
                 {
                     g_Notify->DisplayError("XOR 1");
                 }
@@ -6090,7 +6092,7 @@ void CX86RecompilerOps::SPECIAL_XOR()
         }
         else
         {
-            if (b32BitCore())
+            if (g_GameSettings.core32Bit)
             {
                 m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, KnownReg);
                 m_Assembler.XorVariableToX86reg(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rd), &m_Reg.m_GPR[UnknownReg].W[0], CRegName::GPR_Lo[UnknownReg]);
@@ -6103,7 +6105,7 @@ void CX86RecompilerOps::SPECIAL_XOR()
             }
         }
     }
-    else if (b32BitCore())
+    else if (g_GameSettings.core32Bit)
     {
         m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, m_Opcode.rt);
         m_Assembler.XorVariableToX86reg(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rd), &m_Reg.m_GPR[m_Opcode.rs].W[0], CRegName::GPR_Lo[m_Opcode.rs]);
@@ -6229,7 +6231,7 @@ void CX86RecompilerOps::SPECIAL_NOR()
             uint64_t Value = m_RegWorkingSet.Is64Bit(KnownReg) ? m_RegWorkingSet.GetMipsReg(KnownReg) : m_RegWorkingSet.GetMipsRegLo_S(KnownReg);
             uint32_t dwValue = (uint32_t)(Value & 0xFFFFFFFF);
 
-            if (b32BitCore() && m_RegWorkingSet.Is32Bit(KnownReg))
+            if (g_GameSettings.core32Bit && m_RegWorkingSet.Is32Bit(KnownReg))
             {
                 m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, UnknownReg);
                 if (dwValue != 0)
@@ -6252,7 +6254,7 @@ void CX86RecompilerOps::SPECIAL_NOR()
         }
         else
         {
-            if (b32BitCore())
+            if (g_GameSettings.core32Bit)
             {
                 m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, KnownReg);
                 m_Assembler.OrVariableToX86Reg(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rd), &m_Reg.m_GPR[UnknownReg].W[0], CRegName::GPR_Lo[UnknownReg]);
@@ -6267,7 +6269,7 @@ void CX86RecompilerOps::SPECIAL_NOR()
     }
     else
     {
-        if (b32BitCore())
+        if (g_GameSettings.core32Bit)
         {
             m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, m_Opcode.rt);
             m_Assembler.OrVariableToX86Reg(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rd), &m_Reg.m_GPR[m_Opcode.rs].W[0], CRegName::GPR_Lo[m_Opcode.rs]);
@@ -6329,7 +6331,7 @@ void CX86RecompilerOps::SPECIAL_SLT()
             m_RegWorkingSet.ProtectGPR(m_Opcode.rt);
             m_RegWorkingSet.ProtectGPR(m_Opcode.rs);
             if ((m_RegWorkingSet.Is64Bit(m_Opcode.rt) && m_RegWorkingSet.Is64Bit(m_Opcode.rs)) ||
-                (!b32BitCore() && (m_RegWorkingSet.Is64Bit(m_Opcode.rt) || m_RegWorkingSet.Is64Bit(m_Opcode.rs))))
+                (!g_GameSettings.core32Bit && (m_RegWorkingSet.Is64Bit(m_Opcode.rt) || m_RegWorkingSet.Is64Bit(m_Opcode.rs))))
             {
                 asmjit::Label Jump[2];
 
@@ -6449,7 +6451,7 @@ void CX86RecompilerOps::SPECIAL_SLT()
         uint32_t UnknownReg = m_RegWorkingSet.IsKnown(m_Opcode.rt) ? m_Opcode.rs : m_Opcode.rt;
         asmjit::Label Jump[2];
 
-        if (!b32BitCore())
+        if (!g_GameSettings.core32Bit)
         {
             if (m_RegWorkingSet.Is64Bit(KnownReg))
             {
@@ -6554,7 +6556,7 @@ void CX86RecompilerOps::SPECIAL_SLT()
             }
         }
     }
-    else if (b32BitCore())
+    else if (g_GameSettings.core32Bit)
     {
         asmjit::x86::Gp Reg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, m_Opcode.rs, false, false);
         m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, false, -1);
@@ -6635,7 +6637,7 @@ void CX86RecompilerOps::SPECIAL_SLTU()
             m_RegWorkingSet.ProtectGPR(m_Opcode.rt);
             m_RegWorkingSet.ProtectGPR(m_Opcode.rs);
             if ((m_RegWorkingSet.Is64Bit(m_Opcode.rt) && m_RegWorkingSet.Is64Bit(m_Opcode.rs)) ||
-                (!b32BitCore() && (m_RegWorkingSet.Is64Bit(m_Opcode.rt) || m_RegWorkingSet.Is64Bit(m_Opcode.rs))))
+                (!g_GameSettings.core32Bit && (m_RegWorkingSet.Is64Bit(m_Opcode.rt) || m_RegWorkingSet.Is64Bit(m_Opcode.rs))))
             {
                 asmjit::Label Jump[2];
 
@@ -6748,7 +6750,7 @@ void CX86RecompilerOps::SPECIAL_SLTU()
         asmjit::Label Jump[2];
 
         m_RegWorkingSet.ProtectGPR(KnownReg);
-        if (b32BitCore())
+        if (g_GameSettings.core32Bit)
         {
             uint32_t TestReg = m_RegWorkingSet.IsConst(KnownReg) ? m_Opcode.rs : m_Opcode.rt;
             if (m_RegWorkingSet.IsConst(KnownReg))
@@ -6836,7 +6838,7 @@ void CX86RecompilerOps::SPECIAL_SLTU()
         m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, true, -1);
         m_Assembler.MoveVariableToX86reg(m_RegWorkingSet.GetMipsRegMapLo(m_Opcode.rd), &m_BranchCompare, "m_BranchCompare");
     }
-    else if (b32BitCore())
+    else if (g_GameSettings.core32Bit)
     {
         asmjit::x86::Gp Reg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, m_Opcode.rs, false, false);
         m_RegWorkingSet.Map_GPR_32bit(m_Opcode.rd, false, -1);
@@ -6879,7 +6881,7 @@ void CX86RecompilerOps::SPECIAL_DADD()
         int64_t sum = rs + rt;
         if ((~(rs ^ rt) & (rs ^ sum)) & 0x8000000000000000)
         {
-            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
             CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_ExceptionOverflow, true, nullptr);
             m_PipelineStage = PIPELINE_STAGE_END_BLOCK;
         }
@@ -6951,9 +6953,9 @@ void CX86RecompilerOps::SPECIAL_DADD()
         }
         if (OverFlowCheck)
         {
-            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
             CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_ExceptionOverflow, false, &CX86Ops::JoLabel);
-            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
         }
         if (m_Opcode.rd != 0)
         {
@@ -7041,7 +7043,7 @@ void CX86RecompilerOps::SPECIAL_DSUB()
 
         if (((rs ^ rt) & (rs ^ sub)) & 0x8000000000000000)
         {
-            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+            m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
             CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_ExceptionOverflow, true, nullptr);
             m_PipelineStage = PIPELINE_STAGE_END_BLOCK;
         }
@@ -7089,9 +7091,9 @@ void CX86RecompilerOps::SPECIAL_DSUB()
             m_Assembler.SubVariableFromX86reg(RegLo, &m_Reg.m_GPR[m_Opcode.rt].W[0], CRegName::GPR_Lo[m_Opcode.rt]);
             m_Assembler.SbbVariableFromX86reg(RegHi, &m_Reg.m_GPR[m_Opcode.rt].W[1], CRegName::GPR_Hi[m_Opcode.rt]);
         }
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_ExceptionOverflow, false, &CX86Ops::JoLabel);
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
         if (m_Opcode.rd != 0)
         {
             m_RegWorkingSet.UnProtectGPR(m_Opcode.rs);
@@ -7609,7 +7611,7 @@ void x86_compiler_COP0_CO_ERET()
 
 void CX86RecompilerOps::COP0_CO_ERET(void)
 {
-    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     m_RegWorkingSet.WriteBackRegisters();
     m_Assembler.CallFunc((uint32_t)x86_compiler_COP0_CO_ERET, "x86_compiler_COP0_CO_ERET");
 
@@ -7939,7 +7941,7 @@ void CX86RecompilerOps::COP1_S_CMP()
     m_Assembler.or_(StatusReg, (uint32_t)FPCSR_CV);
     m_Assembler.test(StatusReg, FPCSR_EV);
     CRegInfo ExitRegSet = m_RegWorkingSet;
-    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     CompileExit((uint32_t)-1, (uint32_t)-1, ExitRegSet, ExitReason_ExceptionFloatingPoint, false, &CX86Ops::JnzLabel);
     m_Assembler.or_(StatusReg, (uint32_t)FPCSR_FV);
     if ((m_Opcode.funct & 8) == 0)
@@ -8133,7 +8135,7 @@ void CX86RecompilerOps::COP1_D_CMP()
     m_Assembler.or_(StatusReg, (uint32_t)FPCSR_CV);
     m_Assembler.test(StatusReg, FPCSR_EV);
     CRegInfo ExitRegSet = m_RegWorkingSet;
-    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     CompileExit((uint32_t)-1, (uint32_t)-1, ExitRegSet, ExitReason_ExceptionFloatingPoint, false, &CX86Ops::JnzLabel);
     m_Assembler.or_(StatusReg, (uint32_t)FPCSR_FV);
     if ((m_Opcode.funct & 8) == 0)
@@ -8204,7 +8206,7 @@ void CX86RecompilerOps::UnknownOpcode()
     {
         m_Assembler.CallThis((uint32_t)g_BaseSystem, AddressOf(&CN64System::SyncSystem), "CN64System::SyncSystem", 4);
     }
-    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
 
     m_Assembler.MoveConstToVariable(&g_System->m_OpCodes.m_Opcode.Value, "R4300iOp::m_Opcode.Value", m_Opcode.Value);
     m_Assembler.CallThis((uint32_t)&g_System->m_OpCodes, AddressOf(&R4300iOp::UnknownOpcode), "R4300iOp::UnknownOpcode", 4);
@@ -8276,7 +8278,7 @@ void CX86RecompilerOps::FoundMemoryBreakpoint()
 
 void CX86RecompilerOps::PreReadInstruction()
 {
-    if (!HaveReadBP())
+    if (!g_DebugSettings.haveReadBP)
     {
         return;
     }
@@ -8285,7 +8287,7 @@ void CX86RecompilerOps::PreReadInstruction()
 
 void CX86RecompilerOps::PreWriteInstruction()
 {
-    if (!HaveWriteBP())
+    if (!g_DebugSettings.haveWriteBP)
     {
         return;
     }
@@ -8310,7 +8312,7 @@ void CX86RecompilerOps::TestBreakpoint(const asmjit::x86::Gp & AddressReg, uint3
 
 void CX86RecompilerOps::TestWriteBreakpoint(const asmjit::x86::Gp & AddressReg, uint32_t FunctAddress, const char * FunctName)
 {
-    if (!HaveWriteBP())
+    if (!g_DebugSettings.haveWriteBP)
     {
         return;
     }
@@ -8319,7 +8321,7 @@ void CX86RecompilerOps::TestWriteBreakpoint(const asmjit::x86::Gp & AddressReg, 
 
 void CX86RecompilerOps::TestReadBreakpoint(const asmjit::x86::Gp & AddressReg, uint32_t FunctAddress, const char * FunctName)
 {
-    if (!HaveReadBP())
+    if (!g_DebugSettings.haveReadBP)
     {
         return;
     }
@@ -8328,6 +8330,7 @@ void CX86RecompilerOps::TestReadBreakpoint(const asmjit::x86::Gp & AddressReg, u
 
 void CX86RecompilerOps::EnterCodeBlock()
 {
+    m_ColdEntryOffset = (uint32_t)m_Assembler.offset();
 #ifdef _DEBUG
     m_Assembler.push(asmjit::x86::esi);
 #else
@@ -8335,6 +8338,7 @@ void CX86RecompilerOps::EnterCodeBlock()
     m_Assembler.push(asmjit::x86::esi);
     m_Assembler.push(asmjit::x86::ebx);
 #endif
+    m_WarmEntryOffset = (uint32_t)m_Assembler.offset();
 }
 
 void CX86RecompilerOps::ExitCodeBlock()
@@ -8494,7 +8498,7 @@ void CX86RecompilerOps::CompileCheckFPUInput(asmjit::x86::Gp RegPointer, FpuOpSi
     m_Assembler.test(asmjit::x86::al, asmjit::x86::al);
     m_RegWorkingSet.AfterCallDirect();
     CRegInfo ExitRegSet = m_RegWorkingSet;
-    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     CompileExit((uint32_t)-1, (uint32_t)-1, ExitRegSet, ExitReason_Exception, false, &CX86Ops::JnzLabel);
     m_Assembler.bind(ValidFpuValue);
     if (m_PipelineStage == PIPELINE_STAGE_JUMP || m_PipelineStage == PIPELINE_STAGE_DELAY_SLOT)
@@ -8543,7 +8547,7 @@ void CX86RecompilerOps::CompileCheckFPUResult32(int32_t DestReg)
     m_Assembler.test(asmjit::x86::al, asmjit::x86::al);
     m_RegWorkingSet.AfterCallDirect();
     CRegInfo ExitRegSet = m_RegWorkingSet;
-    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     CompileExit((uint32_t)-1, (uint32_t)-1, ExitRegSet, ExitReason_Exception, false, &CX86Ops::JneLabel);
     if (m_PipelineStage == PIPELINE_STAGE_JUMP || m_PipelineStage == PIPELINE_STAGE_DELAY_SLOT)
     {
@@ -8571,7 +8575,7 @@ void CX86RecompilerOps::CompileCheckFPUResult32(int32_t DestReg)
     m_Assembler.MoveVariableToX86reg(TempRegFPR_S, &m_Reg.m_FPR_UDW[DestReg], stdstr_f("m_FPR_UDW[%d]", DestReg).c_str());
     m_Assembler.mov(asmjit::x86::dword_ptr(TempRegFPR_S), TempReg);
     m_Assembler.and_(asmjit::x86::dword_ptr(TempRegFPR_S, 4), 0);
-    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     CompileExit(m_CompilePC + 4, m_CompilePC + 4, ExitRegSet, ExitReason_Normal, false, &CX86Ops::JmpLabel);
 
     m_Assembler.bind(ValueSame);
@@ -8613,17 +8617,21 @@ void CX86RecompilerOps::CompileCheckFPUResult64(asmjit::x86::Gp RegPointer)
     m_Assembler.mov(TempReg, asmjit::x86::dword_ptr(RegPointer, 4));
     m_Assembler.mov(TempReg2, asmjit::x86::dword_ptr(RegPointer));
     m_RegWorkingSet.BeforeCallDirect();
+    m_Assembler.push(RegPointer);
+    m_Assembler.PushImm32("FE_ALL_EXCEPT", FE_ALL_EXCEPT);
+    m_Assembler.CallFunc((uint32_t)fetestexcept, "fetestexcept");
+    m_Assembler.add(asmjit::x86::esp, 4);
+    m_Assembler.MoveX86regToVariable(&softfloat_exceptionFlags, "softfloat_exceptionFlags", asmjit::x86::eax);
     if (m_PipelineStage == PIPELINE_STAGE_JUMP || m_PipelineStage == PIPELINE_STAGE_DELAY_SLOT)
     {
         m_Assembler.MoveConstToVariable(&g_System->m_PipelineStage, "System->m_PipelineStage", PIPELINE_STAGE_JUMP);
     }
     m_Assembler.MoveConstToVariable(&m_Reg.m_PROGRAM_COUNTER, "PROGRAM_COUNTER", m_CompilePC);
-    m_Assembler.push(RegPointer);
     m_Assembler.CallThis((uint32_t)&g_System->m_OpCodes, AddressOf(&R4300iOp::CheckFPUResult64), "R4300iOp::CheckFPUResult64", 8);
     m_Assembler.test(asmjit::x86::al, asmjit::x86::al);
     m_RegWorkingSet.AfterCallDirect();
     CRegInfo ExitRegSet = m_RegWorkingSet;
-    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     CompileExit((uint32_t)-1, (uint32_t)-1, ExitRegSet, ExitReason_Exception, false, &CX86Ops::JneLabel);
     if (m_PipelineStage == PIPELINE_STAGE_JUMP || m_PipelineStage == PIPELINE_STAGE_DELAY_SLOT)
     {
@@ -8644,7 +8652,7 @@ void CX86RecompilerOps::CompileCheckFPUResult64(asmjit::x86::Gp RegPointer)
     m_Assembler.MoveVariableToX86reg(TempRegFPR_D, &m_Reg.m_FPR_D[m_Opcode.fd], stdstr_f("m_FPR_D[%d]", m_Opcode.fd).c_str());
     m_Assembler.mov(asmjit::x86::dword_ptr(TempRegFPR_D), TempReg2);
     m_Assembler.mov(asmjit::x86::dword_ptr(TempRegFPR_D, 4), TempReg);
-    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     CompileExit(m_CompilePC + 4, m_CompilePC + 4, ExitRegSet, ExitReason_Normal, false, &CX86Ops::JmpLabel);
     m_Assembler.bind(ValueSame);
     m_Assembler.bind(DoNoModify);
@@ -8665,7 +8673,7 @@ void CX86RecompilerOps::CompileCop1Test()
     m_Assembler.finit();
     m_Assembler.TestVariable(&g_Reg->STATUS_REGISTER, "STATUS_REGISTER", STATUS_CU1);
     CRegInfo ExitRegSet = m_RegWorkingSet;
-    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     CompileExit(m_CompilePC, m_CompilePC, ExitRegSet, ExitReason_COP1Unuseable, false, &CX86Ops::JeLabel);
     m_RegWorkingSet.SetFpuBeenUsed(true);
 }
@@ -8785,8 +8793,8 @@ void CX86RecompilerOps::SyncRegState(const CRegInfo & SyncTo)
     for (int i = 1; i < 32; i++)
     {
         if (m_RegWorkingSet.GetMipsRegState(i) == SyncTo.GetMipsRegState(i) ||
-            (b32BitCore() && m_RegWorkingSet.GetMipsRegState(i) == CRegInfo::STATE_MAPPED_32_ZERO && SyncTo.GetMipsRegState(i) == CRegInfo::STATE_MAPPED_32_SIGN) ||
-            (b32BitCore() && m_RegWorkingSet.GetMipsRegState(i) == CRegInfo::STATE_MAPPED_32_SIGN && SyncTo.GetMipsRegState(i) == CRegInfo::STATE_MAPPED_32_ZERO))
+            (g_GameSettings.core32Bit && m_RegWorkingSet.GetMipsRegState(i) == CRegInfo::STATE_MAPPED_32_ZERO && SyncTo.GetMipsRegState(i) == CRegInfo::STATE_MAPPED_32_SIGN) ||
+            (g_GameSettings.core32Bit && m_RegWorkingSet.GetMipsRegState(i) == CRegInfo::STATE_MAPPED_32_SIGN && SyncTo.GetMipsRegState(i) == CRegInfo::STATE_MAPPED_32_ZERO))
         {
             switch (m_RegWorkingSet.GetMipsRegState(i))
             {
@@ -8930,7 +8938,7 @@ void CX86RecompilerOps::SyncRegState(const CRegInfo & SyncTo)
                 m_RegWorkingSet.SetX86Mapped(GetIndexFromX86Reg(m_RegWorkingSet.GetMipsRegMapLo(i)), CRegInfo::NotMapped);
                 break;
             case CRegInfo::STATE_MAPPED_32_SIGN:
-                if (b32BitCore())
+                if (g_GameSettings.core32Bit)
                 {
                     m_Assembler.mov(Reg, m_RegWorkingSet.GetMipsRegMapLo(i));
                     m_RegWorkingSet.SetX86Mapped(GetIndexFromX86Reg(m_RegWorkingSet.GetMipsRegMapLo(i)), CRegInfo::NotMapped);
@@ -8942,7 +8950,7 @@ void CX86RecompilerOps::SyncRegState(const CRegInfo & SyncTo)
                 }
                 break;
             case CRegInfo::STATE_CONST_32_SIGN:
-                if (!b32BitCore() && m_RegWorkingSet.GetMipsRegLo_S(i) < 0)
+                if (!g_GameSettings.core32Bit && m_RegWorkingSet.GetMipsRegLo_S(i) < 0)
                 {
                     m_CodeBlock.Log("Sign problems in SyncRegState\nSTATE_MAPPED_32_ZERO");
                     m_CodeBlock.Log("%s: %X", CRegName::GPR[i], m_RegWorkingSet.GetMipsRegLo_S(i));
@@ -9192,7 +9200,7 @@ bool CX86RecompilerOps::InheritParentInfo()
                     }
                     break;
                 case CRegInfo::STATE_UNKNOWN:
-                    if (b32BitCore())
+                    if (g_GameSettings.core32Bit)
                     {
                         m_RegWorkingSet.Map_GPR_32bit(i2, true, i2);
                     }
@@ -9239,7 +9247,7 @@ bool CX86RecompilerOps::InheritParentInfo()
                         }
                         break;
                     case CRegInfo::STATE_UNKNOWN:
-                        if (b32BitCore())
+                        if (g_GameSettings.core32Bit)
                         {
                             m_RegWorkingSet.Map_GPR_32bit(i2, true, i2);
                         }
@@ -9507,17 +9515,22 @@ void CX86RecompilerOps::UpdateCounters(CRegInfo & RegSet, bool CheckTimer, bool 
 
     if (CheckTimer)
     {
-        asmjit::Label Jump = m_Assembler.newLabel();
-        m_Assembler.JnsLabel("Continue_From_Timer_Test", Jump);
+        asmjit::Label TimerDonePath = m_Assembler.newLabel();
+        m_Assembler.JsLabel("Timer_Done_Path", TimerDonePath);
+        m_Assembler.EnterSecondarySection();
+        m_Assembler.bind(TimerDonePath);
         RegSet.BeforeCallDirect();
         m_Assembler.CallThis((uint32_t)g_SystemTimer, AddressOf(&CSystemTimer::TimerDone), "CSystemTimer::TimerDone", 4);
         RegSet.AfterCallDirect();
+        asmjit::Label ContinueFromTimerTest = m_Assembler.newLabel();
+        m_Assembler.JmpLabel("Continue_From_Timer_Test", ContinueFromTimerTest);
+        m_Assembler.EnterPrimarySection();
 
         m_CodeBlock.Log("");
-        m_Assembler.bind(Jump);
+        m_Assembler.bind(ContinueFromTimerTest);
     }
 
-    if ((UpdateTimer || CGameSettings::OverClockModifier() != 1) && g_SyncSystem)
+    if ((UpdateTimer || g_GameSettings.overClockModifier != 1) && g_SyncSystem)
     {
         m_RegWorkingSet.BeforeCallDirect();
         m_Assembler.CallThis((uint32_t)g_SystemTimer, AddressOf(&CSystemTimer::UpdateTimers), "CSystemTimer::UpdateTimers", 4);
@@ -9585,7 +9598,7 @@ void CX86RecompilerOps::CompileExecuteDelaySlotBP(void)
 
 void CX86RecompilerOps::OverflowDelaySlot(bool TestTimer)
 {
-    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+    m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     m_RegWorkingSet.WriteBackRegisters();
     UpdateCounters(m_RegWorkingSet, false, true);
     if (m_PipelineStage == PIPELINE_STAGE_DELAY_SLOT)
@@ -9610,20 +9623,30 @@ void CX86RecompilerOps::OverflowDelaySlot(bool TestTimer)
         m_Assembler.MoveConstByteToVariable(&g_System->m_TestTimer, "R4300iOp::m_TestTimer", TestTimer);
     }
 
-    m_Assembler.PushImm32("g_System->CountPerOp()", g_System->CountPerOp());
+    m_Assembler.PushImm32("g_GameSettings.countPerOp", g_GameSettings.countPerOp);
     m_Assembler.CallThis((uint32_t)&g_System->m_OpCodes, AddressOf(&R4300iOp::ExecuteOps), "R4300iOp::ExecuteOps", 8);
 
-    if (g_System->bFastSP() && g_Recompiler)
+    if (g_GameSettings.fastSP && g_Recompiler)
     {
         m_Assembler.CallThis((uint32_t)g_Recompiler, AddressOf(&CRecompiler::ResetMemoryStackPos), "CRecompiler::ResetMemoryStackPos", 4);
     }
     if (g_SyncSystem)
     {
-        UpdateSyncCPU(m_RegWorkingSet, g_System->CountPerOp());
+        UpdateSyncCPU(m_RegWorkingSet, g_GameSettings.countPerOp);
     }
 
     ExitCodeBlock();
     m_PipelineStage = PIPELINE_STAGE_END_BLOCK;
+}
+
+uint32_t CX86RecompilerOps::ColdEntryOffset(void) const
+{
+    return m_ColdEntryOffset;
+}
+
+uint32_t CX86RecompilerOps::WarmEntryOffset(void) const
+{
+    return m_WarmEntryOffset;
 }
 
 void CX86RecompilerOps::CompileExit(uint32_t JumpPC, uint32_t TargetPC, CRegInfo & ExitRegSet, ExitReason reason)
@@ -9893,7 +9916,7 @@ asmjit::x86::Gp CX86RecompilerOps::BaseOffsetAddress(bool UseBaseRegister)
         m_Assembler.AddConstToX86Reg(AddressReg, (int16_t)m_Opcode.immediate);
     }
 
-    if (!b32BitCore() && ((m_RegWorkingSet.IsKnown(m_Opcode.base) && m_RegWorkingSet.Is64Bit(m_Opcode.base)) || m_RegWorkingSet.IsUnknown(m_Opcode.base)))
+    if (!g_GameSettings.core32Bit && ((m_RegWorkingSet.IsKnown(m_Opcode.base) && m_RegWorkingSet.Is64Bit(m_Opcode.base)) || m_RegWorkingSet.IsUnknown(m_Opcode.base)))
     {
         m_Assembler.MoveX86regToVariable(&m_TempValue64, "TempValue64", AddressReg);
         asmjit::x86::Gp AddressRegHi = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, -1, false, false);
@@ -9918,9 +9941,9 @@ asmjit::x86::Gp CX86RecompilerOps::BaseOffsetAddress(bool UseBaseRegister)
             m_Assembler.cmp(AddressRegHi, AddressMemoryHi);
             m_RegWorkingSet.SetX86Protected(GetIndexFromX86Reg(AddressMemoryHi), false);
         }
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_AddressErrorExceptionRead64, false, &CX86Ops::JneLabel);
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
         m_RegWorkingSet.SetX86Protected(GetIndexFromX86Reg(AddressRegHi), false);
     }
     return AddressReg;
@@ -9954,7 +9977,7 @@ void CX86RecompilerOps::CompileLoadMemoryValue(asmjit::x86::Gp & AddressReg, con
         m_Assembler.test(asmjit::x86::al, asmjit::x86::al);
         m_RegWorkingSet.AfterCallDirect();
         CRegInfo ExitRegSet = m_RegWorkingSet;
-        ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+        ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         if (m_Instruction.WritesGPR() > 0)
         {
             ExitRegSet.UnMap_GPR(m_Opcode.rt, false);
@@ -9999,7 +10022,7 @@ void CX86RecompilerOps::CompileLoadMemoryValue(asmjit::x86::Gp & AddressReg, con
 
     asmjit::x86::Gp TempReg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, -1, false, false);
     CRegInfo ExitRegSet = m_RegWorkingSet;
-    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+    ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
     if (m_Instruction.WritesGPR() > 0)
     {
         ExitRegSet.UnMap_GPR(m_Opcode.rt, false);
@@ -10222,9 +10245,9 @@ void CX86RecompilerOps::CompileStoreMemoryValue(asmjit::x86::Gp AddressReg, cons
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_AddressErrorExceptionWrite32, false, &CX86Ops::JneLabel);
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
     }
 
     asmjit::x86::Gp TempReg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, -1, false, false);
@@ -10264,9 +10287,9 @@ void CX86RecompilerOps::CompileStoreMemoryValue(asmjit::x86::Gp AddressReg, cons
         }
         m_Assembler.test(asmjit::x86::al, asmjit::x86::al);
         m_RegWorkingSet.AfterCallDirect();
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_Exception, false, &CX86Ops::JeLabel);
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
         if (m_PipelineStage != PIPELINE_STAGE_NORMAL)
         {
             m_Assembler.MoveConstToVariable(&g_System->m_PipelineStage, "g_System->m_PipelineStage", PIPELINE_STAGE_NORMAL);
@@ -10293,9 +10316,9 @@ void CX86RecompilerOps::CompileStoreMemoryValue(asmjit::x86::Gp AddressReg, cons
         }
         m_Assembler.test(asmjit::x86::al, asmjit::x86::al);
         m_RegWorkingSet.AfterCallDirect();
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_Exception, false, &CX86Ops::JeLabel);
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
         if (m_PipelineStage != PIPELINE_STAGE_NORMAL)
         {
             m_Assembler.MoveConstToVariable(&g_System->m_PipelineStage, "g_System->m_PipelineStage", PIPELINE_STAGE_NORMAL);
@@ -10322,9 +10345,9 @@ void CX86RecompilerOps::CompileStoreMemoryValue(asmjit::x86::Gp AddressReg, cons
         }
         m_Assembler.test(asmjit::x86::al, asmjit::x86::al);
         m_RegWorkingSet.AfterCallDirect();
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_Exception, false, &CX86Ops::JeLabel);
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
 
         if (m_PipelineStage != PIPELINE_STAGE_NORMAL)
         {
@@ -10354,9 +10377,9 @@ void CX86RecompilerOps::CompileStoreMemoryValue(asmjit::x86::Gp AddressReg, cons
         }
         m_Assembler.test(asmjit::x86::al, asmjit::x86::al);
         m_RegWorkingSet.AfterCallDirect();
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit(m_CompilePC, m_CompilePC, m_RegWorkingSet, ExitReason_Exception, false, &CX86Ops::JeLabel);
-        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_System->CountPerOp());
+        m_RegWorkingSet.SetBlockCycleCount(m_RegWorkingSet.GetBlockCycleCount() - g_GameSettings.countPerOp);
         if (m_PipelineStage != PIPELINE_STAGE_NORMAL)
         {
             m_Assembler.MoveConstToVariable(&g_System->m_PipelineStage, "g_System->m_PipelineStage", PIPELINE_STAGE_NORMAL);
@@ -10546,7 +10569,7 @@ void CX86RecompilerOps::SB_Const(uint32_t Value, uint32_t VAddr)
     if (!m_MMU.VAddrToPAddr(VAddr, PAddr))
     {
         m_CodeBlock.Log("%s\nFailed to translate address: %08X", __FUNCTION__, VAddr);
-        if (BreakOnUnhandledMemory())
+        if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -10563,7 +10586,7 @@ void CX86RecompilerOps::SB_Const(uint32_t Value, uint32_t VAddr)
     case 0x00500000:
     case 0x00600000:
     case 0x00700000:
-        if (CGameSettings::bSMM_StoreInstruc())
+        if (g_GameSettings.smmStoreInstruc)
         {
             asmjit::x86::Gp AddressReg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, -1, false, false);
             m_Assembler.MoveConstToX86reg(AddressReg, VAddr);
@@ -10585,7 +10608,7 @@ void CX86RecompilerOps::SB_Const(uint32_t Value, uint32_t VAddr)
         }
         else
         {
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -10601,7 +10624,7 @@ void CX86RecompilerOps::SB_Const(uint32_t Value, uint32_t VAddr)
             m_Assembler.CallThis((uint32_t)(MemoryHandler *)&g_MMU->m_RomMemoryHandler, (uint32_t)((long **)(MemoryHandler *)&g_MMU->m_RomMemoryHandler)[0][1], "RomMemoryHandler::Write32", 16);
             m_RegWorkingSet.AfterCallDirect();
         }
-        else if (BreakOnUnhandledMemory())
+        else if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -10624,7 +10647,7 @@ void CX86RecompilerOps::SB_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
     if (!m_MMU.VAddrToPAddr(VAddr, PAddr))
     {
         m_CodeBlock.Log("%s\nFailed to translate address: %08X", __FUNCTION__, VAddr);
-        if (BreakOnUnhandledMemory())
+        if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -10641,7 +10664,7 @@ void CX86RecompilerOps::SB_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
     case 0x00500000:
     case 0x00600000:
     case 0x00700000:
-        if (CGameSettings::bSMM_StoreInstruc())
+        if (g_GameSettings.smmStoreInstruc)
         {
             asmjit::x86::Gp AddressReg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, -1, false, false);
             m_Assembler.MoveConstToX86reg(AddressReg, VAddr);
@@ -10653,7 +10676,7 @@ void CX86RecompilerOps::SB_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
         }
         break;
     default:
-        if (BreakOnUnhandledMemory())
+        if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -10674,7 +10697,7 @@ void CX86RecompilerOps::SH_Const(uint32_t Value, uint32_t VAddr)
     if (!m_MMU.VAddrToPAddr(VAddr, PAddr))
     {
         m_CodeBlock.Log("%s\nFailed to translate address: %08X", __FUNCTION__, VAddr);
-        if (BreakOnUnhandledMemory())
+        if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -10691,7 +10714,7 @@ void CX86RecompilerOps::SH_Const(uint32_t Value, uint32_t VAddr)
     case 0x00500000:
     case 0x00600000:
     case 0x00700000:
-        if (CGameSettings::bSMM_StoreInstruc())
+        if (g_GameSettings.smmStoreInstruc)
         {
             asmjit::x86::Gp AddressReg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, -1, false, false);
             m_Assembler.MoveConstToX86reg(AddressReg, VAddr);
@@ -10712,7 +10735,7 @@ void CX86RecompilerOps::SH_Const(uint32_t Value, uint32_t VAddr)
             m_Assembler.CallThis((uint32_t)(MemoryHandler *)&g_MMU->m_RomMemoryHandler, (uint32_t)((long **)(MemoryHandler *)&g_MMU->m_RomMemoryHandler)[0][1], "RomMemoryHandler::Write32", 16);
             m_RegWorkingSet.AfterCallDirect();
         }
-        else if (BreakOnUnhandledMemory())
+        else if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -10744,7 +10767,7 @@ void CX86RecompilerOps::SH_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
             case 0x00500000:
             case 0x00600000:
             case 0x00700000:
-                if (CGameSettings::bSMM_StoreInstruc())
+                if (g_GameSettings.smmStoreInstruc)
                 {
                     asmjit::x86::Gp AddressReg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, -1, false, false);
                     m_Assembler.MoveConstToX86reg(AddressReg, VAddr);
@@ -10756,7 +10779,7 @@ void CX86RecompilerOps::SH_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
                 }
                 break;
             default:
-                if (BreakOnUnhandledMemory())
+                if (g_DebugSettings.breakOnUnhandledMemory)
                 {
                     g_Notify->BreakPoint(__FILE__, __LINE__);
                 }
@@ -10765,7 +10788,7 @@ void CX86RecompilerOps::SH_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
         else
         {
             m_CodeBlock.Log("%s\nFailed to translate address: %08X", __FUNCTION__, VAddr);
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -10789,7 +10812,7 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
     if (!m_MMU.VAddrToPAddr(VAddr, PAddr))
     {
         m_CodeBlock.Log("%s\nFailed to translate address: %08X", __FUNCTION__, VAddr);
-        if (BreakOnUnhandledMemory())
+        if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -10806,7 +10829,7 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
     case 0x00500000:
     case 0x00600000:
     case 0x00700000:
-        if (CGameSettings::bSMM_StoreInstruc())
+        if (g_GameSettings.smmStoreInstruc)
         {
             asmjit::x86::Gp AddressReg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, -1, false, false);
             m_Assembler.MoveConstToX86reg(AddressReg, VAddr);
@@ -10837,7 +10860,7 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
         case 0x03F8000C: break;
         case 0x03F80014: break;
         default:
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -10879,7 +10902,7 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
             case 0x0404001C: m_Assembler.MoveConstToVariable(&g_Reg->SP_SEMAPHORE_REG, "SP_SEMAPHORE_REG", 0); break;
             case 0x04080000: m_Assembler.MoveConstToVariable(&g_Reg->SP_PC_REG, "SP_PC_REG", Value & 0xFFC); break;
             default:
-                if (BreakOnUnhandledMemory())
+                if (g_DebugSettings.breakOnUnhandledMemory)
                 {
                     g_Notify->BreakPoint(__FILE__, __LINE__);
                 }
@@ -10897,7 +10920,7 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
             m_RegWorkingSet.AfterCallDirect();
             break;
         default:
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -10981,14 +11004,14 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
             break;
         }
         default:
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
         }
         break;
     case 0x04400000:
-        if (GenerateLog() && LogVideoInterface())
+        if (g_LogSettings.generateLog && g_LogSettings.logVideoInterface)
         {
             UpdateCounters(m_RegWorkingSet, false, true, false);
 
@@ -11049,7 +11072,7 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
             case 0x04400030: m_Assembler.MoveConstToVariable(&g_Reg->VI_X_SCALE_REG, "VI_X_SCALE_REG", Value); break;
             case 0x04400034: m_Assembler.MoveConstToVariable(&g_Reg->VI_Y_SCALE_REG, "VI_Y_SCALE_REG", Value); break;
             default:
-                if (BreakOnUnhandledMemory())
+                if (g_DebugSettings.breakOnUnhandledMemory)
                 {
                     g_Notify->BreakPoint(__FILE__, __LINE__);
                 }
@@ -11094,7 +11117,7 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
         case 0x0460002C: m_Assembler.MoveConstToVariable(&g_Reg->PI_BSD_DOM2_PGS_REG, "PI_BSD_DOM2_PGS_REG", (Value & 0xFF)); break;
         case 0x04600030: m_Assembler.MoveConstToVariable(&g_Reg->PI_BSD_DOM2_RLS_REG, "PI_BSD_DOM2_RLS_REG", (Value & 0xFF)); break;
         default:
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -11108,7 +11131,7 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
         case 0x04700008: m_Assembler.MoveConstToVariable(&g_Reg->RI_CURRENT_LOAD_REG, "RI_CURRENT_LOAD_REG", Value); break;
         case 0x0470000C: m_Assembler.MoveConstToVariable(&g_Reg->RI_SELECT_REG, "RI_SELECT_REG", Value); break;
         default:
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -11140,7 +11163,7 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
             m_RegWorkingSet.AfterCallDirect();
             break;
         default:
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -11148,7 +11171,7 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
         break;
     case 0x05000000:
         // 64DD registers
-        if (EnableDisk())
+        if (g_GameSettings.enableDisk)
         {
             switch (PAddr)
             {
@@ -11158,7 +11181,7 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
                 m_RegWorkingSet.AfterCallDirect();
                 break;
             default:
-                if (BreakOnUnhandledMemory())
+                if (g_DebugSettings.breakOnUnhandledMemory)
                 {
                     g_Notify->BreakPoint(__FILE__, __LINE__);
                 }
@@ -11186,7 +11209,7 @@ void CX86RecompilerOps::SW_Const(uint32_t Value, uint32_t VAddr)
         }
         else
         {
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -11217,7 +11240,7 @@ void CX86RecompilerOps::SW_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
     if (!m_MMU.VAddrToPAddr(VAddr, PAddr))
     {
         m_CodeBlock.Log("%s\nFailed to translate address: %08X", __FUNCTION__, VAddr);
-        if (BreakOnUnhandledMemory())
+        if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -11234,7 +11257,7 @@ void CX86RecompilerOps::SW_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
     case 0x00500000:
     case 0x00600000:
     case 0x00700000:
-        if (CGameSettings::bSMM_StoreInstruc())
+        if (g_GameSettings.smmStoreInstruc)
         {
             asmjit::x86::Gp AddressReg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, -1, false, false);
             m_Assembler.MoveConstToX86reg(AddressReg, VAddr);
@@ -11270,7 +11293,7 @@ void CX86RecompilerOps::SW_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
             m_Assembler.AndConstToVariable(&g_Reg->SP_PC_REG, "SP_PC_REG", 0xFFC);
             break;
         default:
-            if (CGameSettings::bSMM_StoreInstruc())
+            if (g_GameSettings.smmStoreInstruc)
             {
                 asmjit::x86::Gp AddressReg = m_RegWorkingSet.Map_TempReg(x86Reg_Unknown, -1, false, false);
                 m_Assembler.MoveConstToX86reg(AddressReg, VAddr);
@@ -11287,7 +11310,7 @@ void CX86RecompilerOps::SW_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
             else
             {
                 m_CodeBlock.Log("    should be moving %s in to %08X ?", CX86Ops::x86_Name(Reg), VAddr);
-                if (BreakOnUnhandledMemory())
+                if (g_DebugSettings.breakOnUnhandledMemory)
                 {
                     g_Notify->BreakPoint(__FILE__, __LINE__);
                 }
@@ -11324,14 +11347,14 @@ void CX86RecompilerOps::SW_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
             break;
         default:
             m_CodeBlock.Log("    should be moving %s in to %08X ?", CX86Ops::x86_Name(Reg), VAddr);
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
         }
         break;
     case 0x04400000:
-        if (GenerateLog() && LogVideoInterface())
+        if (g_LogSettings.generateLog && g_LogSettings.logVideoInterface)
         {
             UpdateCounters(m_RegWorkingSet, false, true, false);
 
@@ -11398,7 +11421,7 @@ void CX86RecompilerOps::SW_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
             case 0x04400034: m_Assembler.MoveX86regToVariable(&g_Reg->VI_Y_SCALE_REG, "VI_Y_SCALE_REG", Reg); break;
             default:
                 m_CodeBlock.Log("    should be moving %s in to %08X ?", CX86Ops::x86_Name(Reg), VAddr);
-                if (BreakOnUnhandledMemory())
+                if (g_DebugSettings.breakOnUnhandledMemory)
                 {
                     g_Notify->BreakPoint(__FILE__, __LINE__);
                 }
@@ -11468,7 +11491,7 @@ void CX86RecompilerOps::SW_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
             break;
         default:
             m_CodeBlock.Log("    should be moving %s in to %08X ?", CX86Ops::x86_Name(Reg), VAddr);
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -11482,7 +11505,7 @@ void CX86RecompilerOps::SW_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
         case 0x0470000C: m_Assembler.MoveX86regToVariable(&g_Reg->RI_SELECT_REG, "RI_SELECT_REG", Reg); break;
         case 0x04700010: m_Assembler.MoveX86regToVariable(&g_Reg->RI_REFRESH_REG, "RI_REFRESH_REG", Reg); break;
         default:
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -11512,7 +11535,7 @@ void CX86RecompilerOps::SW_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
             m_RegWorkingSet.AfterCallDirect();
             break;
         default:
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -11520,7 +11543,7 @@ void CX86RecompilerOps::SW_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
         break;
     case 0x05000000:
         // 64DD registers
-        if (EnableDisk())
+        if (g_GameSettings.enableDisk)
         {
             switch (PAddr)
             {
@@ -11586,7 +11609,7 @@ void CX86RecompilerOps::SW_Register(const asmjit::x86::Gp & Reg, uint32_t VAddr)
         else
         {
             m_CodeBlock.Log("    should be moving %s in to %08X ?", CX86Ops::x86_Name(Reg), VAddr);
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -11665,7 +11688,7 @@ void CX86RecompilerOps::COP1_S_CVT(CRegBase::FPU_ROUND RoundMethod, CRegInfo::FP
         {
             m_Assembler.OrConstToVariable(&m_Reg.m_FPCR[31], "_FPCR[31]", FPCSR_CE);
         }
-        ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+        ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit(m_CompilePC, m_CompilePC, ExitRegSet, ExitReason_ExceptionFloatingPoint, false, &CX86Ops::JmpLabel);
         m_Assembler.bind(UnimplementedOperationLabel);
         m_Assembler.bind(ValidValueLabel2);
@@ -11706,7 +11729,7 @@ void CX86RecompilerOps::COP1_S_CVT(CRegBase::FPU_ROUND RoundMethod, CRegInfo::FP
         m_Assembler.test(asmjit::x86::al, asmjit::x86::al);
         m_RegWorkingSet.AfterCallDirect();
         CRegInfo ExitRegSet = m_RegWorkingSet;
-        ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+        ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit((uint32_t)-1, (uint32_t)-1, ExitRegSet, ExitReason_Exception, false, &CX86Ops::JnzLabel);
         if (m_PipelineStage == PIPELINE_STAGE_JUMP || m_PipelineStage == PIPELINE_STAGE_DELAY_SLOT)
         {
@@ -11745,7 +11768,7 @@ void CX86RecompilerOps::COP1_S_CVT(CRegBase::FPU_ROUND RoundMethod, CRegInfo::FP
         m_Assembler.test(asmjit::x86::al, asmjit::x86::al);
         m_RegWorkingSet.AfterCallDirect();
         CRegInfo ExitRegSet = m_RegWorkingSet;
-        ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_System->CountPerOp());
+        ExitRegSet.SetBlockCycleCount(ExitRegSet.GetBlockCycleCount() + g_GameSettings.countPerOp);
         CompileExit((uint32_t)-1, (uint32_t)-1, ExitRegSet, ExitReason_Exception, false, &CX86Ops::JnzLabel);
         if (m_PipelineStage == PIPELINE_STAGE_JUMP || m_PipelineStage == PIPELINE_STAGE_DELAY_SLOT)
         {

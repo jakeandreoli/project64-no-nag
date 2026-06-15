@@ -38,7 +38,7 @@ CartridgeDomain2Address1Handler::CartridgeDomain2Address1Handler(CRegisters & Re
 bool CartridgeDomain2Address1Handler::Read32(uint32_t Address, uint32_t & Value)
 {
     // 64DD registers
-    if (EnableDisk())
+    if (g_GameSettings.enableDisk)
     {
         switch (Address & 0x1FFFFFFF)
         {
@@ -66,7 +66,7 @@ bool CartridgeDomain2Address1Handler::Read32(uint32_t Address, uint32_t & Value)
         case 0x05000548: Value = ASIC_TEST_PIN_SEL; break;
         default:
             Value = (Address << 16) | (Address & 0xFFFF);
-            if (HaveDebugger())
+            if (g_DebugSettings.haveDebugger)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -81,7 +81,7 @@ bool CartridgeDomain2Address1Handler::Read32(uint32_t Address, uint32_t & Value)
 
 bool CartridgeDomain2Address1Handler::Write32(uint32_t Address, uint32_t Value, uint32_t Mask)
 {
-    if (EnableDisk())
+    if (g_GameSettings.enableDisk)
     {
         switch (Address & 0xFFFFFFF)
         {
@@ -103,7 +103,7 @@ bool CartridgeDomain2Address1Handler::Write32(uint32_t Address, uint32_t Value, 
         case 0x05000530: ASIC_SEC_BYTE = (ASIC_SEC_BYTE & ~Mask) | (Value & Mask); break;
         case 0x05000548: ASIC_TEST_PIN_SEL = (ASIC_TEST_PIN_SEL & ~Mask) | (Value & Mask); break;
         default:
-            if (HaveDebugger())
+            if (g_DebugSettings.haveDebugger)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }

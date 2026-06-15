@@ -427,14 +427,14 @@ void CRSP_Plugin::RunRSP()
     uint32_t TaskType = 0;
 
     Memory.MemoryValue32(0xA4000FC0, TaskType);
-    if (TaskType == 1 && UseHleGfx() && (Reg.DPC_STATUS_REG & DPC_STATUS_FREEZE) != 0)
+    if (TaskType == 1 && g_GameSettings.useHleGfx && (Reg.DPC_STATUS_REG & DPC_STATUS_FREEZE) != 0)
     {
         WriteTrace(TraceRSP, TraceDebug, "Dlist that is frozen");
         WriteTrace(TraceRSP, TraceDebug, "Done (SP Status %X)", Reg.SP_STATUS_REG);
         return;
     }
 
-    if (g_Debugger != NULL && HaveDebugger())
+    if (g_Debugger != NULL && g_DebugSettings.haveDebugger)
     {
         g_Debugger->RSPReceivedTask();
     }
@@ -456,11 +456,11 @@ void CRSP_Plugin::RunRSP()
         break;
     }
 
-    if (bShowDListAListCount())
+    if (g_SystemSettings.showDlistAListCount)
     {
         g_Notify->DisplayMessage(0, stdstr_f("Dlist: %d   Alist: %d   Unknown: %d", m_DlistCount, m_AlistCount, m_UnknownCount).c_str());
     }
-    if (bRecordExecutionTimes() || bShowCPUPer())
+    if (g_DebugSettings.recordExecutionTimes || g_SystemSettings.showCpuPer)
     {
         StartTime.SetToNow();
     }
@@ -468,7 +468,7 @@ void CRSP_Plugin::RunRSP()
     uint32_t DataPtr = 0;
     Memory.MemoryValue32(0xA4000FF0, DataPtr);
     bool ExecuteCycles = true;
-    if (TaskType == 1 && UseHleGfx() && DataPtr != 0)
+    if (TaskType == 1 && g_GameSettings.useHleGfx && DataPtr != 0)
     {
         if (m_Plugins->Gfx()->ProcessDList != nullptr)
         {
@@ -481,14 +481,14 @@ void CRSP_Plugin::RunRSP()
         }
 
         Reg.DPC_STATUS_REG &= ~0x0002;
-        if (bDelayDP() && ((Reg.m_GfxIntrReg & MI_INTR_DP) != 0))
+        if (g_GameSettings.delayDP && ((Reg.m_GfxIntrReg & MI_INTR_DP) != 0))
         {
             g_SystemTimer->SetTimer(CSystemTimer::RSPTimerDlist, 0x1000, false);
             Reg.m_GfxIntrReg &= ~MI_INTR_DP;
         }
         ExecuteCycles = false;
     }
-    else if (TaskType == 2 && UseHleAudio())
+    else if (TaskType == 2 && g_GameSettings.useHleAudio)
     {
         if (m_Plugins->Audio()->ProcessAList != nullptr)
         {
@@ -501,14 +501,14 @@ void CRSP_Plugin::RunRSP()
         }
         ExecuteCycles = false;
     }
-    else if (TaskType == 7 && UseHleGfx() && m_Plugins->Gfx()->ShowCFB != nullptr)
+    else if (TaskType == 7 && g_GameSettings.useHleGfx && m_Plugins->Gfx()->ShowCFB != nullptr)
     {
         m_Plugins->Gfx()->ShowCFB();
     }
 
     if (ExecuteCycles)
     {
-        if (RspMultiThreaded())
+        if (g_GameSettings.rspMultiThreaded)
         {
             m_RunEvent.Trigger();
         }
@@ -519,7 +519,7 @@ void CRSP_Plugin::RunRSP()
             WriteTrace(TraceRSP, TraceDebug, "Do cycles - done");
         }
     }
-    if (bRecordExecutionTimes() || bShowCPUPer())
+    if (g_DebugSettings.recordExecutionTimes || g_SystemSettings.showCpuPer)
     {
         HighResTimeStamp EndTime;
         EndTime.SetToNow();
@@ -539,7 +539,7 @@ void CRSP_Plugin::RunRSP()
     }
     WriteTrace(TraceRSP, TraceDebug, "Check interrupts");
     g_Reg->CheckInterrupts();
-    if (bShowCPUPer())
+    if (g_SystemSettings.showCpuPer)
     {
         CPU_Usage.StartTimer(CPU_UsageAddr);
     }
@@ -560,7 +560,7 @@ uint32_t CRSP_Plugin::RspThread(void)
     CRegisters & Reg = m_System->m_Reg;
     for (;;)
     {
-        if ((Reg.SP_STATUS_REG & SP_STATUS_HALT) != 0 || !RspMultiThreaded())
+        if ((Reg.SP_STATUS_REG & SP_STATUS_HALT) != 0 || !g_GameSettings.rspMultiThreaded)
         {
             m_RunEvent.Reset();
             m_RunEvent.IsTriggered(SyncEvent::INFINITE_TIMEOUT);

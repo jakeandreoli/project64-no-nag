@@ -40,9 +40,7 @@ class CN64System;
 class SPRegistersHandler :
     public MemoryHandler,
     private RSPRegisterHandler,
-    private CGameSettings,
     private MIPSInterfaceReg,
-    private CDebugSettings,
     private CLogging
 {
 public:

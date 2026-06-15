@@ -85,8 +85,7 @@ $CC -o $obj/Settings/RomList.asm        $src/RomList/RomList.cpp $C_FLAGS
 $CC -o $obj/Settings/Debug.asm          $src/Settings/DebugSettings.cpp $C_FLAGS
 $CC -o $obj/Settings/Game.asm           $src/Settings/GameSettings.cpp $C_FLAGS
 $CC -o $obj/Settings/Logging.asm        $src/Settings/LoggingSettings.cpp $C_FLAGS
-$CC -o $obj/Settings/N64System.asm      $src/Settings/N64SystemSettings.cpp $C_FLAGS
-$CC -o $obj/Settings/Recompiler.asm     $src/Settings/RecompilerSettings.cpp $C_FLAGS
+$CC -o $obj/Settings/System.asm         $src/Settings/SystemSettings.cpp $C_FLAGS
 $CC -o $obj/Settings.asm                $src/Settings.cpp $C_FLAGS
 $CC -o $obj/Settings/type/App.asm       $src/Settings/SettingType/SettingsType-Application.cpp $C_FLAGS
 $CC -o $obj/Settings/type/AppIndex.asm  $src/Settings/SettingType/SettingsType-ApplicationIndex.cpp $C_FLAGS
@@ -95,6 +94,7 @@ $CC -o $obj/Settings/type/GSetting.asm  $src/Settings/SettingType/SettingsType-G
 $CC -o $obj/Settings/type/GSettingX.asm $src/Settings/SettingType/SettingsType-GameSettingIndex.cpp $C_FLAGS
 $CC -o $obj/Settings/type/RDBCpu.asm    $src/Settings/SettingType/SettingsType-RDBCpuType.cpp $C_FLAGS
 $CC -o $obj/Settings/type/RDBOnOff.asm  $src/Settings/SettingType/SettingsType-RDBOnOff.cpp $C_FLAGS
+$CC -o $obj/Settings/type/RDBLink.asm   $src/Settings/SettingType/SettingsType-RDBLinking.cpp $C_FLAGS
 $CC -o $obj/Settings/type/RDBRamSz.asm  $src/Settings/SettingType/SettingsType-RDBRamSize.cpp $C_FLAGS
 $CC -o $obj/Settings/type/RDBSaves.asm  $src/Settings/SettingType/SettingsType-RDBSaveChip.cpp $C_FLAGS
 $CC -o $obj/Settings/type/RDBYesNo.asm  $src/Settings/SettingType/SettingsType-RDBYesNo.cpp $C_FLAGS
@@ -169,8 +169,7 @@ $AS -o $obj/Settings/RomList.o          $obj/Settings/RomList.asm
 $AS -o $obj/Settings/Debug.o            $obj/Settings/Debug.asm
 $AS -o $obj/Settings/Game.o             $obj/Settings/Game.asm
 $AS -o $obj/Settings/Logging.o          $obj/Settings/Logging.asm
-$AS -o $obj/Settings/N64System.o        $obj/Settings/N64System.asm
-$AS -o $obj/Settings/Recompiler.o       $obj/Settings/Recompiler.asm
+$AS -o $obj/Settings/System.o          $obj/Settings/System.asm
 $AS -o $obj/Settings.o                  $obj/Settings.asm
 $AS -o $obj/Settings/type/App.o         $obj/Settings/type/App.asm
 $AS -o $obj/Settings/type/AppIndex.o    $obj/Settings/type/AppIndex.asm
@@ -179,6 +178,7 @@ $AS -o $obj/Settings/type/GSetting.o    $obj/Settings/type/GSetting.asm
 $AS -o $obj/Settings/type/GSettingX.o   $obj/Settings/type/GSettingX.asm
 $AS -o $obj/Settings/type/RDBCpu.o      $obj/Settings/type/RDBCpu.asm
 $AS -o $obj/Settings/type/RDBOnOff.o    $obj/Settings/type/RDBOnOff.asm
+$AS -o $obj/Settings/type/RDBLink.o     $obj/Settings/type/RDBLink.asm
 $AS -o $obj/Settings/type/RDBRamSz.o    $obj/Settings/type/RDBRamSz.asm
 $AS -o $obj/Settings/type/RDBSaves.o    $obj/Settings/type/RDBSaves.asm
 $AS -o $obj/Settings/type/RDBYesNo.o    $obj/Settings/type/RDBYesNo.asm
@@ -252,8 +252,7 @@ $obj/Settings/RomList.o \
 $obj/Settings/Debug.o \
 $obj/Settings/Game.o \
 $obj/Settings/Logging.o \
-$obj/Settings/N64System.o \
-$obj/Settings/Recompiler.o \
+$obj/Settings/System.o \
 $obj/Settings.o \
 $obj/Settings/type/App.o \
 $obj/Settings/type/AppIndex.o \
@@ -262,6 +261,7 @@ $obj/Settings/type/GSetting.o \
 $obj/Settings/type/GSettingX.o \
 $obj/Settings/type/RDBCpu.o \
 $obj/Settings/type/RDBOnOff.o \
+$obj/Settings/type/RDBLink.o \
 $obj/Settings/type/RDBRamSz.o \
 $obj/Settings/type/RDBSaves.o \
 $obj/Settings/type/RDBYesNo.o \

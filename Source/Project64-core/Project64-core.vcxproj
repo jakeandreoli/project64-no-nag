@@ -126,8 +126,7 @@
     <ClCompile Include="Settings\DebugSettings.cpp" />
     <ClCompile Include="Settings\GameSettings.cpp" />
     <ClCompile Include="Settings\LoggingSettings.cpp" />
-    <ClCompile Include="Settings\N64SystemSettings.cpp" />
-    <ClCompile Include="Settings\RecompilerSettings.cpp" />
+    <ClCompile Include="Settings\SystemSettings.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-Application.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-ApplicationIndex.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-ApplicationPath.cpp" />
@@ -136,6 +135,7 @@
     <ClCompile Include="Settings\SettingType\SettingsType-RDB.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-RDBCpuType.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-RDBOnOff.cpp" />
+    <ClCompile Include="Settings\SettingType\SettingsType-RDBLinking.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-RDBRamSize.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-RDBSaveChip.cpp" />
     <ClCompile Include="Settings\SettingType\SettingsType-RDBUser.cpp" />
@@ -253,8 +253,7 @@
     <ClInclude Include="Settings\DebugSettings.h" />
     <ClInclude Include="Settings\GameSettings.h" />
     <ClInclude Include="Settings\LoggingSettings.h" />
-    <ClInclude Include="Settings\N64SystemSettings.h" />
-    <ClInclude Include="Settings\RecompilerSettings.h" />
+    <ClInclude Include="Settings\SystemSettings.h" />
     <ClInclude Include="Settings\SettingsID.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-Application.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-ApplicationIndex.h" />
@@ -265,6 +264,7 @@
     <ClInclude Include="Settings\SettingType\SettingsType-RDB.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-RDBCpuType.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-RDBOnOff.h" />
+    <ClInclude Include="Settings\SettingType\SettingsType-RDBLinking.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-RDBRamSize.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-RDBSaveChip.h" />
     <ClInclude Include="Settings\SettingType\SettingsType-RelativePath.h" />

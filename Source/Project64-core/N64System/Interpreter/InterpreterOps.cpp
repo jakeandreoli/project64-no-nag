@@ -60,7 +60,7 @@ R4300iOp::~R4300iOp()
 
 void R4300iOp::InPermLoop()
 {
-    if (EndOnPermLoop() &&
+    if (g_DebugSettings.endOnPermLoop &&
         ((m_Reg.STATUS_REGISTER.InterruptEnable) == 0 ||
          (m_Reg.STATUS_REGISTER.ExceptionLevel) != 0 ||
          (m_Reg.STATUS_REGISTER.ErrorLevel) != 0 ||
@@ -76,7 +76,7 @@ void R4300iOp::InPermLoop()
     else if (*g_NextTimer > 0)
     {
         g_SystemTimer->UpdateTimers();
-        *g_NextTimer = 0 - m_System.CountPerOp();
+        *g_NextTimer = 0 - g_GameSettings.countPerOp;
         g_SystemTimer->UpdateTimers();
     }
 }
@@ -90,7 +90,7 @@ void R4300iOp::ExecuteOps(uint32_t Cycles)
     bool & TestTimer = m_System.m_TestTimer;
     CSystemEvents & SystemEvents = m_System.m_SystemEvents;
     const bool & DoSomething = SystemEvents.DoSomething();
-    uint32_t CountPerOp = m_System.CountPerOp();
+    uint32_t CountPerOp = g_GameSettings.countPerOp;
     int32_t & NextTimer = *g_NextTimer;
     bool CheckTimer = false;
     bool updateInstructionMemory = true;
@@ -104,24 +104,24 @@ void R4300iOp::ExecuteOps(uint32_t Cycles)
             updateInstructionMemory = false;
         }
         m_Opcode.Value = *m_InstructionPtr;
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
-            if (HaveExecutionBP() && g_Debugger->ExecutionBP((uint32_t)m_PROGRAM_COUNTER))
+            if (g_DebugSettings.haveExecutionBP && g_Debugger->ExecutionBP((uint32_t)m_PROGRAM_COUNTER))
             {
                 g_Settings->SaveBool(Debugger_SteppingOps, true);
             }
 
-            if (TrackCPUStepStarted())
+            if (g_DebugSettings.trackCPUStepStarted)
             {
                 g_Debugger->CPUStepStarted(); // May set stepping ops/skip op
             }
 
-            if (isStepping())
+            if (g_DebugSettings.stepping)
             {
                 g_Debugger->WaitForStep();
             }
 
-            if (SkipOp())
+            if (g_DebugSettings.skipOp)
             {
                 // Skip command if instructed by the debugger
                 g_Settings->SaveBool(Debugger_SkipOp, false);
@@ -129,7 +129,7 @@ void R4300iOp::ExecuteOps(uint32_t Cycles)
                 continue;
             }
 
-            if (TrackCPUStep())
+            if (g_DebugSettings.cpuLoggingEnabled)
             {
                 g_Debugger->CPUStep();
             }
@@ -143,7 +143,7 @@ void R4300iOp::ExecuteOps(uint32_t Cycles)
             Cycles -= CountPerOp;
         }
 
-        if (TrackCPUStepEnded())
+        if (g_DebugSettings.trackCPUStepEnded)
         {
             g_Debugger->CPUStepEnded();
         }
@@ -1523,7 +1523,7 @@ void R4300iOp::SWR_32()
 
 void R4300iOp::CACHE()
 {
-    if (!LogCache())
+    if (!g_LogSettings.logCache)
     {
         return;
     }
@@ -1780,7 +1780,7 @@ void R4300iOp::SPECIAL_SYSCALL()
 
 void R4300iOp::SPECIAL_BREAK()
 {
-    if (StepOnBreakOpCode())
+    if (g_DebugSettings.stepOnBreakOpCode)
     {
         g_Settings->SaveBool(Debugger_SteppingOps, true);
         g_Debugger->WaitForStep();
@@ -3471,7 +3471,7 @@ void R4300iOp::ReservedInstruction()
 
 void R4300iOp::UnknownOpcode()
 {
-    if (HaveDebugger())
+    if (g_DebugSettings.haveDebugger)
     {
         g_Settings->SaveBool(Debugger_SteppingOps, true);
         g_Debugger->WaitForStep();

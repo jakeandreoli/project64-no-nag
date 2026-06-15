@@ -13,17 +13,55 @@ class CX64Ops :
 public:
     CX64Ops(CCodeBlock & CodeBlock);
 
+    void JoLabel(const char * LabelName, asmjit::Label & JumpLabel);
+    void JsLabel(const char * LabelName, asmjit::Label & JumpLabel);
+    void JeLabel(const char * LabelName, asmjit::Label & JumpLabel);
+    void X64CmpConstToVariable(void * Variable, const char * VariableName, uint32_t Const);
+    void MoveConstToVariable(void * Variable, const char * VariableName, uint32_t Const);
+    void MoveConstToX64reg(const asmjit::x86::Gp & Reg, uint64_t Const, const char * ValueName = nullptr);
+    void MoveVariable32ToX64reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName);
+    void MoveVariable64ToX64reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName);
+    void MoveVariable32SignExtendToX64reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName);
+    void MovDwordToVariable(void * Variable, const char * VariableName, const asmjit::x86::Gp & Src);
+    void MovQwordToVariable(void * Variable, const char * VariableName, const asmjit::x86::Gp & Src);
+    void AddDwordFromVariable(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName);
+    void SubConstFromVariable(uint32_t Const, void * Variable, const char * VariableName);
+    void EnterPrimarySection();
+    void EnterSecondarySection();
+    void CallFunc(uintptr_t FunctPtr, const char * FunctName);
+    void CallThis(void * ThisPtr, uintptr_t FunctPtr, const char * FunctName);
+
 private:
     CX64Ops(void);
     CX64Ops(const CX64Ops &);
     CX64Ops & operator=(const CX64Ops &);
 
     asmjit::Error _log(const char * data, size_t size) noexcept;
+    void AddLabelSymbol(const asmjit::Label & Label, const char * Symbol);
+    void AddNumberSymbol(uintptr_t Value, const char * Symbol);
+    void AddNumberSymbol(uintptr_t Value, const std::string & Symbol);
 
-    typedef std::map<std::string, std::string> SymbolMap;
+    typedef struct
+    {
+        std::string Symbol;
+        uint32_t Count;
+    } NumberSymbol;
 
-    SymbolMap m_Symbols;
+    typedef std::map<uintptr_t, NumberSymbol> NumberSymbolMap;
+
+    NumberSymbolMap m_LabelSymbols;
+    NumberSymbolMap m_NumberSymbols;
     CCodeBlock & m_CodeBlock;
+    asmjit::Section * m_PrimarySection;
+    asmjit::Section * m_SecondarySection;
 };
+
+template <typename T>
+uintptr_t MemberFuncAddress(T func)
+{
+    uintptr_t result = 0;
+    memcpy(&result, &func, sizeof(uintptr_t));
+    return result;
+}
 
 #endif

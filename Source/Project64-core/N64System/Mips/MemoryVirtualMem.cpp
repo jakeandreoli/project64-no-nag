@@ -319,7 +319,7 @@ bool CMipsMemoryVM::LB_Memory(uint64_t VAddr, uint8_t & Value)
         return LB_PhysicalAddress(PAddr, Value);
     }
     uint32_t VAddr32 = (uint32_t)VAddr;
-    if (HaveReadBP() && g_Debugger->ReadBP8(VAddr32) && MemoryBreakpoint())
+    if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP8(VAddr32) && MemoryBreakpoint())
     {
         return false;
     }
@@ -351,7 +351,7 @@ bool CMipsMemoryVM::LH_Memory(uint64_t VAddr, uint16_t & Value)
         return LH_PhysicalAddress(PAddr, Value);
     }
     uint32_t VAddr32 = (uint32_t)VAddr;
-    if (HaveReadBP() && g_Debugger->ReadBP16(VAddr32) && MemoryBreakpoint())
+    if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP16(VAddr32) && MemoryBreakpoint())
     {
         return false;
     }
@@ -383,7 +383,7 @@ bool CMipsMemoryVM::LW_Memory(uint64_t VAddr, uint32_t & Value)
         return LW_PhysicalAddress(PAddr, Value);
     }
     uint32_t VAddr32 = (uint32_t)VAddr;
-    if (HaveReadBP() && g_Debugger->ReadBP32(VAddr32) && MemoryBreakpoint())
+    if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP32(VAddr32) && MemoryBreakpoint())
     {
         return false;
     }
@@ -415,7 +415,7 @@ bool CMipsMemoryVM::LD_Memory(uint64_t VAddr, uint64_t & Value)
         return LD_PhysicalAddress(PAddr, Value);
     }
     uint32_t VAddr32 = (uint32_t)VAddr;
-    if (HaveReadBP() && g_Debugger->ReadBP64(VAddr32) && MemoryBreakpoint())
+    if (g_DebugSettings.haveReadBP && g_Debugger->ReadBP64(VAddr32) && MemoryBreakpoint())
     {
         return false;
     }
@@ -443,7 +443,7 @@ bool CMipsMemoryVM::SB_Memory(uint64_t VAddr, uint32_t Value)
         return SB_PhysicalAddress(PAddr, Value);
     }
     uint32_t VAddr32 = (uint32_t)VAddr;
-    if (HaveWriteBP() && g_Debugger->WriteBP8(VAddr32) && MemoryBreakpoint())
+    if (g_DebugSettings.haveWriteBP && g_Debugger->WriteBP8(VAddr32) && MemoryBreakpoint())
     {
         return false;
     }
@@ -475,7 +475,7 @@ bool CMipsMemoryVM::SH_Memory(uint64_t VAddr, uint32_t Value)
         return SH_PhysicalAddress(PAddr, Value);
     }
     uint32_t VAddr32 = (uint32_t)VAddr;
-    if (HaveWriteBP() && g_Debugger->WriteBP16(VAddr32) && MemoryBreakpoint())
+    if (g_DebugSettings.haveWriteBP && g_Debugger->WriteBP16(VAddr32) && MemoryBreakpoint())
     {
         return false;
     }
@@ -507,7 +507,7 @@ bool CMipsMemoryVM::SW_Memory(uint64_t VAddr, uint32_t Value)
         return SW_PhysicalAddress(PAddr, Value);
     }
     uint32_t VAddr32 = (uint32_t)VAddr;
-    if (HaveWriteBP() && g_Debugger->WriteBP32(VAddr32) && MemoryBreakpoint())
+    if (g_DebugSettings.haveWriteBP && g_Debugger->WriteBP32(VAddr32) && MemoryBreakpoint())
     {
         return false;
     }
@@ -539,7 +539,7 @@ bool CMipsMemoryVM::SD_Memory(uint64_t VAddr, uint64_t Value)
         return SD_PhysicalAddress(PAddr, Value);
     }
     uint32_t VAddr32 = (uint32_t)VAddr;
-    if (HaveWriteBP() && g_Debugger->WriteBP64(VAddr32) && MemoryBreakpoint())
+    if (g_DebugSettings.haveWriteBP && g_Debugger->WriteBP64(VAddr32) && MemoryBreakpoint())
     {
         return false;
     }
@@ -576,7 +576,7 @@ bool CMipsMemoryVM::MemoryBreakpoint()
     }
     g_Settings->SaveBool(Debugger_SteppingOps, true);
     g_Debugger->WaitForStep();
-    if (SkipOp())
+    if (g_DebugSettings.skipOp)
     {
         // Skip command if instructed by the debugger
         g_Settings->SaveBool(Debugger_SkipOp, false);
@@ -637,7 +637,7 @@ bool CMipsMemoryVM::LB_PhysicalAddress(uint32_t PAddr, uint8_t & Value)
     {
     case 0x1FC00000: m_PifRamHandler.Read32(ReadAddress, Value32); break;
     default:
-        if (PAddr < RdramSize())
+        if (PAddr < g_GameSettings.rdramSize)
         {
             Value = *(uint8_t *)(m_RDRAM + (PAddr ^ 3));
             return true;
@@ -653,7 +653,7 @@ bool CMipsMemoryVM::LB_PhysicalAddress(uint32_t PAddr, uint8_t & Value)
         }
         else
         {
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -672,7 +672,7 @@ bool CMipsMemoryVM::LH_PhysicalAddress(uint32_t PAddr, uint16_t & Value)
     {
     case 0x1FC00000: m_PifRamHandler.Read32(ReadAddress, Value32); break;
     default:
-        if (PAddr < RdramSize())
+        if (PAddr < g_GameSettings.rdramSize)
         {
             Value = *(uint16_t *)(m_RDRAM + (PAddr ^ 2));
             return true;
@@ -688,7 +688,7 @@ bool CMipsMemoryVM::LH_PhysicalAddress(uint32_t PAddr, uint16_t & Value)
         }
         else
         {
-            if (BreakOnUnhandledMemory())
+            if (g_DebugSettings.breakOnUnhandledMemory)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -719,7 +719,7 @@ bool CMipsMemoryVM::LW_PhysicalAddress(uint32_t PAddr, uint32_t & Value)
     case 0x1FC00000: m_PifRamHandler.Read32(PAddr, Value); break;
     case 0x1FF00000: m_CartridgeDomain1Address3Handler.Read32(PAddr, Value); break;
     default:
-        if (PAddr < RdramSize())
+        if (PAddr < g_GameSettings.rdramSize)
         {
             Value = *(uint32_t *)(m_RDRAM + PAddr);
         }
@@ -727,7 +727,7 @@ bool CMipsMemoryVM::LW_PhysicalAddress(uint32_t PAddr, uint32_t & Value)
         {
             m_RomMemoryHandler.Read32(PAddr, Value);
         }
-        else if (BreakOnUnhandledMemory())
+        else if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
             Value = ((PAddr & 0xFFFF) << 16) | (PAddr & 0xFFFF);
@@ -742,7 +742,7 @@ bool CMipsMemoryVM::LW_PhysicalAddress(uint32_t PAddr, uint32_t & Value)
 
 bool CMipsMemoryVM::LD_PhysicalAddress(uint32_t PAddr, uint64_t & Value)
 {
-    if (PAddr < RdramSize())
+    if (PAddr < g_GameSettings.rdramSize)
     {
         *((uint32_t *)(&Value) + 1) = *(uint32_t *)(m_RDRAM + PAddr);
         *((uint32_t *)(&Value) + 0) = *(uint32_t *)(m_RDRAM + PAddr + 4);
@@ -815,7 +815,7 @@ bool CMipsMemoryVM::SB_PhysicalAddress(uint32_t PAddr, uint32_t Value)
     case 0x00500000:
     case 0x00600000:
     case 0x00700000:
-        if (PAddr < RdramSize())
+        if (PAddr < g_GameSettings.rdramSize)
         {
             g_Recompiler->ClearRecompCode_Phys(PAddr & ~0xFFF, 0xFFC, CRecompiler::Remove_ProtectedMem);
             *(uint8_t *)(m_RDRAM + (PAddr ^ 3)) = (uint8_t)Value;
@@ -828,7 +828,7 @@ bool CMipsMemoryVM::SB_PhysicalAddress(uint32_t PAddr, uint32_t Value)
         {
             m_RomMemoryHandler.Write32(PAddr, Value << ((3 - (PAddr & 3)) * 8), 0xFFFFFFFF);
         }
-        else if (BreakOnUnhandledMemory())
+        else if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -848,9 +848,9 @@ bool CMipsMemoryVM::SH_PhysicalAddress(uint32_t PAddr, uint32_t Value)
     case 0x00500000:
     case 0x00600000:
     case 0x00700000:
-        if (PAddr < RdramSize())
+        if (PAddr < g_GameSettings.rdramSize)
         {
-            if (CGameSettings::bSMM_StoreInstruc())
+            if (g_GameSettings.smmStoreInstruc)
             {
                 g_Recompiler->ClearRecompCode_Phys(PAddr & ~0xFFF, 0x1000, CRecompiler::Remove_ProtectedMem);
                 m_TLB_WriteMap[(0x80000000 + PAddr) >> 12] = PAddr - (0x80000000 + PAddr);
@@ -866,7 +866,7 @@ bool CMipsMemoryVM::SH_PhysicalAddress(uint32_t PAddr, uint32_t Value)
         {
             m_RomMemoryHandler.Write32(PAddr, Value << ((2 - (PAddr & 2)) * 8), 0xFFFFFFFF);
         }
-        else if (BreakOnUnhandledMemory())
+        else if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -887,9 +887,9 @@ bool CMipsMemoryVM::SW_PhysicalAddress(uint32_t PAddr, uint32_t Value)
     case 0x00600000:
     case 0x00700000:
     case 0x00800000:
-        if (PAddr < RdramSize())
+        if (PAddr < g_GameSettings.rdramSize)
         {
-            if (CGameSettings::bSMM_StoreInstruc())
+            if (g_GameSettings.smmStoreInstruc)
             {
                 g_Recompiler->ClearRecompCode_Phys(PAddr & ~0xFFF, 0x1000, CRecompiler::Remove_ProtectedMem);
                 m_TLB_WriteMap[(0x80000000 + PAddr) >> 12] = PAddr - (0x80000000 + PAddr);
@@ -921,7 +921,7 @@ bool CMipsMemoryVM::SW_PhysicalAddress(uint32_t PAddr, uint32_t Value)
         {
             m_RomMemoryHandler.Write32(PAddr, Value, 0xFFFFFFFF);
         }
-        else if (BreakOnUnhandledMemory())
+        else if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -942,7 +942,7 @@ bool CMipsMemoryVM::SD_PhysicalAddress(uint32_t PAddr, uint64_t Value)
     case 0x00500000:
     case 0x00600000:
     case 0x00700000:
-        if (PAddr < RdramSize())
+        if (PAddr < g_GameSettings.rdramSize)
         {
             g_Recompiler->ClearRecompCode_Phys(PAddr & ~0xFFF, 0xFFC, CRecompiler::Remove_ProtectedMem);
             *(uint32_t *)(m_RDRAM + PAddr) = *((uint32_t *)(&Value) + 1);
@@ -955,7 +955,7 @@ bool CMipsMemoryVM::SD_PhysicalAddress(uint32_t PAddr, uint64_t Value)
         {
             m_RomMemoryHandler.Write32(PAddr, (int32_t)(Value >> 32), 0xFFFFFFFF);
         }
-        else if (BreakOnUnhandledMemory())
+        else if (g_DebugSettings.breakOnUnhandledMemory)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }

@@ -62,13 +62,13 @@ bool PeripheralInterfaceHandler::Read32(uint32_t Address, uint32_t & Value)
     case 0x04600030: Value = PI_BSD_DOM2_RLS_REG; break;
     default:
         Value = 0;
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
     }
 
-    if (GenerateLog() && LogPerInterface())
+    if (g_LogSettings.generateLog && g_LogSettings.logPerInterface)
     {
         switch (Address & 0x1FFFFFFF)
         {
@@ -86,7 +86,7 @@ bool PeripheralInterfaceHandler::Read32(uint32_t Address, uint32_t & Value)
         case 0x0460002C: LogMessage("%016llX: read from PI_BSD_DOM2_PGS_REG (%08X)", m_PC, Value); break;
         case 0x04600030: LogMessage("%016llX: read from PI_BSD_DOM2_RLS_REG (%08X)", m_PC, Value); break;
         default:
-            if (HaveDebugger())
+            if (g_DebugSettings.haveDebugger)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -97,7 +97,7 @@ bool PeripheralInterfaceHandler::Read32(uint32_t Address, uint32_t & Value)
 
 bool PeripheralInterfaceHandler::Write32(uint32_t Address, uint32_t Value, uint32_t Mask)
 {
-    if (GenerateLog() && LogPerInterface())
+    if (g_LogSettings.generateLog && g_LogSettings.logPerInterface)
     {
         switch (Address & 0x1FFFFFFF)
         {
@@ -115,7 +115,7 @@ bool PeripheralInterfaceHandler::Write32(uint32_t Address, uint32_t Value, uint3
         case 0x0460002C: LogMessage("%016llX: Writing 0x%08X (Mask: 0x%08X) to PI_BSD_DOM2_PGS_REG", m_PC, Value, Mask); break;
         case 0x04600030: LogMessage("%016llX: Writing 0x%08X (Mask: 0x%08X) to PI_BSD_DOM2_RLS_REG", m_PC, Value, Mask); break;
         default:
-            if (HaveDebugger())
+            if (g_DebugSettings.haveDebugger)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -126,8 +126,8 @@ bool PeripheralInterfaceHandler::Write32(uint32_t Address, uint32_t Value, uint3
     {
     case 0x04600000: PI_DRAM_ADDR_REG = ((PI_DRAM_ADDR_REG & ~Mask) | (Value & Mask)) & 0x00FFFFFE; break;
     case 0x04600004:
-        PI_CART_ADDR_REG = ((PI_CART_ADDR_REG & ~Mask) | (Value & Mask)) & (UnalignedDMA() ? 0xFFFFFFFF : 0xFFFFFFFE);
-        if (EnableDisk())
+        PI_CART_ADDR_REG = ((PI_CART_ADDR_REG & ~Mask) | (Value & Mask)) & (g_GameSettings.unalignedDMA ? 0xFFFFFFFF : 0xFFFFFFFE);
+        if (g_GameSettings.enableDisk)
         {
             DiskDMACheck();
         }
@@ -161,7 +161,7 @@ bool PeripheralInterfaceHandler::Write32(uint32_t Address, uint32_t Value, uint3
     case 0x0460002C: PI_BSD_DOM2_PGS_REG = ((PI_BSD_DOM2_PGS_REG & ~Mask) | (Value & Mask)) & 0xFF; break;
     case 0x04600030: PI_BSD_DOM2_RLS_REG = ((PI_BSD_DOM2_RLS_REG & ~Mask) | (Value & Mask)) & 0xFF; break;
     default:
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -212,7 +212,7 @@ void PeripheralInterfaceHandler::OnFirstDMA()
 
 void PeripheralInterfaceHandler::PI_DMA_READ()
 {
-    if (g_Debugger != NULL && HaveDebugger())
+    if (g_Debugger != NULL && g_DebugSettings.haveDebugger)
     {
         g_Debugger->PIDMAReadStarted();
     }
@@ -307,7 +307,7 @@ void PeripheralInterfaceHandler::PI_DMA_READ()
             m_DMAUsed = true;
             OnFirstDMA();
         }
-        if (g_Recompiler && g_System->bSMM_PIDMA())
+        if (g_Recompiler && g_GameSettings.smmPidma)
         {
             g_Recompiler->ClearRecompCode_Phys(PI_DRAM_ADDR_REG, PI_WR_LEN_REG, CRecompiler::Remove_DMA);
         }
@@ -337,7 +337,7 @@ void PeripheralInterfaceHandler::PI_DMA_READ()
         m_Reg.CheckInterrupts();
         return;
     }
-    if (HaveDebugger())
+    if (g_DebugSettings.haveDebugger)
     {
         g_Notify->DisplayError(stdstr_f("PI_DMA_READ where are you DMAing to? : %08X", PI_CART_ADDR_REG).c_str());
     }
@@ -350,7 +350,7 @@ void PeripheralInterfaceHandler::PI_DMA_READ()
 
 void PeripheralInterfaceHandler::PI_DMA_WRITE()
 {
-    if (g_Debugger != nullptr && HaveDebugger())
+    if (g_Debugger != nullptr && g_DebugSettings.haveDebugger)
     {
         g_Debugger->PIDMAWriteStarted();
     }
@@ -378,7 +378,7 @@ void PeripheralInterfaceHandler::PI_DMA_WRITE()
     else
     {
         int32_t Length = PI_WR_LEN_REG + 1;
-        if (g_Recompiler && bSMM_PIDMA())
+        if (g_Recompiler && g_GameSettings.smmPidma)
         {
             g_Recompiler->ClearRecompCode_Phys(WritePos & ~0xFFF, Length, CRecompiler::Remove_DMA);
         }
@@ -469,7 +469,7 @@ void PeripheralInterfaceHandler::PI_DMA_WRITE()
         }
         else if (ReadPos >= 0x10000000 && ReadPos <= 0x1FFFFFFF)
         {
-            if (g_System->bRandomizeSIPIInterrupts())
+            if (g_GameSettings.randomizeSipiInterrupts)
             {
                 //ChangeTimer(PiTimer,(int32_t)(Length * 8.9) + 50);
                 //ChangeTimer(PiTimer,(int32_t)(Length * 8.9));

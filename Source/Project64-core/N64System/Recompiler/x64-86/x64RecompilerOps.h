@@ -1,17 +1,25 @@
 #pragma once
 #if defined(__amd64__) || defined(_M_X64)
 
+#include <Project64-core/N64System/N64Rom.h>
 #include <Project64-core/N64System/Recompiler/ExitInfo.h>
 #include <Project64-core/N64System/Recompiler/RecompilerOps.h>
 #include <Project64-core/N64System/Recompiler/RegInfo.h>
 #include <Project64-core/N64System/Recompiler/x64-86/x64ops.h>
 
 class CX64Ops;
+class CRecompiler;
+class CN64Rom;
 struct CJumpInfo;
 
 class CX64RecompilerOps :
     public CRecompilerOpsBase
 {
+    enum
+    {
+        FunctionStackSize = 40,
+    };
+
 public:
     CX64RecompilerOps(CN64System & System, CCodeBlock & CodeBlock);
     ~CX64RecompilerOps();
@@ -215,12 +223,14 @@ public:
     const R4300iOpcode & GetOpcode(void) const;
     void PreCompileOpcode(void);
     void PostCompileOpcode(void);
-    void CompileExit(uint32_t JumpPC, uint32_t TargetPC, CRegInfo & ExitRegSet, ExitReason reason);
+    void CompileExit(uint32_t JumpPC, uint32_t TargetPC, CRegInfo ExitRegSet, ExitReason reason, void (CX64Ops::*x64Jmp)(const char * LabelName, asmjit::Label & JumpLabel) = nullptr);
 
     void UpdateCounters(CRegInfo & RegSet, bool CheckTimer, bool ClearValues = false, bool UpdateTimer = true);
     void CompileSystemCheck(uint32_t TargetPC, const CRegInfo & RegSet);
     void CompileExecuteBP(void);
     void CompileExecuteDelaySlotBP(void);
+    uint32_t ColdEntryOffset(void) const;
+    uint32_t WarmEntryOffset(void) const;
 
     CX64Ops & Assembler()
     {
@@ -228,11 +238,26 @@ public:
     }
 
 private:
-    CX64RecompilerOps(const CX64RecompilerOps &);
-    CX64RecompilerOps & operator=(const CX64RecompilerOps &);
+    CX64RecompilerOps(const CX64RecompilerOps &) = delete;
+    CX64RecompilerOps & operator=(const CX64RecompilerOps &) = delete;
 
+    bool LW_KnownAddress(const asmjit::x86::Gp & Reg, uint32_t VAddr, bool ResultSigned);
+    void SW_KnownAddress(uint32_t VAddr, const asmjit::x86::Gp * ValueReg, uint32_t ValueConst);
+    void ExitCodeBlock(void);
+    void UpdateSyncCPU(CRegInfo & RegSet, uint32_t Cycles);
+
+    CRecompiler *& m_Recompiler;
+    CN64Rom & m_Rom;
     CX64RegInfo m_RegWorkingSet;
     CX64Ops m_Assembler;
+    CMipsMemoryVM & m_MMU;
+    PIPELINE_STAGE m_PipelineStage;
+    const uint32_t & m_CompilePC;
+    uint32_t m_ColdEntryOffset;
+    uint32_t m_WarmEntryOffset;
+    uint32_t m_ExitLabelCount;
+
+    static uint32_t m_TempValue32;
 };
 
 typedef CX64RecompilerOps CRecompilerOps;

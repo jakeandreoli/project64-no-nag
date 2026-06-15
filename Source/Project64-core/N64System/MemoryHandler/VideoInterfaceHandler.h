@@ -50,8 +50,6 @@ class CN64System;
 class VideoInterfaceHandler :
     public MemoryHandler,
     public VideoInterfaceReg,
-    private CGameSettings,
-    private CDebugSettings,
     private CLogging
 {
 public:

@@ -81,13 +81,13 @@ bool VideoInterfaceHandler::Read32(uint32_t Address, uint32_t & Value)
     case 0x04400034: Value = VI_Y_SCALE_REG; break;
     default:
         Value = 0;
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
     }
 
-    if (GenerateLog() && LogVideoInterface())
+    if (g_LogSettings.generateLog && g_LogSettings.logVideoInterface)
     {
         switch (Address & 0x1FFFFFFF)
         {
@@ -106,7 +106,7 @@ bool VideoInterfaceHandler::Read32(uint32_t Address, uint32_t & Value)
         case 0x04400030: LogMessage("%016llX: read from VI_X_SCALE_REG (%08X)", m_PC, Value); break;
         case 0x04400034: LogMessage("%016llX: read from VI_Y_SCALE_REG (%08X)", m_PC, Value); break;
         default:
-            if (HaveDebugger())
+            if (g_DebugSettings.haveDebugger)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -117,7 +117,7 @@ bool VideoInterfaceHandler::Read32(uint32_t Address, uint32_t & Value)
 
 bool VideoInterfaceHandler::Write32(uint32_t Address, uint32_t Value, uint32_t Mask)
 {
-    if (GenerateLog() && LogVideoInterface())
+    if (g_LogSettings.generateLog && g_LogSettings.logVideoInterface)
     {
         switch (Address & 0x1FFFFFFF)
         {
@@ -136,7 +136,7 @@ bool VideoInterfaceHandler::Write32(uint32_t Address, uint32_t Value, uint32_t M
         case 0x04400030: LogMessage("%016llX: Writing 0x%08X (Mask: 0x%08X) to VI_X_SCALE_REG", m_PC, Value, Mask); break;
         case 0x04400034: LogMessage("%016llX: Writing 0x%08X (Mask: 0x%08X) to VI_Y_SCALE_REG", m_PC, Value, Mask); break;
         default:
-            if (HaveDebugger())
+            if (g_DebugSettings.haveDebugger)
             {
                 g_Notify->BreakPoint(__FILE__, __LINE__);
             }
@@ -184,7 +184,7 @@ bool VideoInterfaceHandler::Write32(uint32_t Address, uint32_t Value, uint32_t M
     case 0x04400030: VI_X_SCALE_REG = (VI_X_SCALE_REG & ~Mask) | (MaskedValue); break;
     case 0x04400034: VI_Y_SCALE_REG = (VI_Y_SCALE_REG & ~Mask) | (MaskedValue); break;
     default:
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
             g_Notify->BreakPoint(__FILE__, __LINE__);
         }
@@ -211,15 +211,15 @@ void VideoInterfaceHandler::UpdateHalfLine()
     int32_t check_value = (int32_t)(m_HalfLineCheck - NextViTimer);
     if (check_value > 0 && check_value < 40)
     {
-        m_NextTimer -= ViRefreshRate();
+        m_NextTimer -= g_GameSettings.viRefreshRate;
         if (m_NextTimer < 0)
         {
-            m_NextTimer = 0 - CountPerOp();
+            m_NextTimer = 0 - g_GameSettings.countPerOp;
         }
         m_SystemTimer.UpdateTimers();
         NextViTimer = m_SystemTimer.GetTimer(CSystemTimer::ViTimer);
     }
-    m_HalfLine = (uint32_t)(m_NextTimer / ViRefreshRate());
+    m_HalfLine = (uint32_t)(m_NextTimer / g_GameSettings.viRefreshRate);
     m_HalfLine &= ~1;
     m_HalfLine |= m_FieldSerration;
     VI_V_CURRENT_LINE_REG = m_HalfLine;

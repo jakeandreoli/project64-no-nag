@@ -683,7 +683,7 @@ void CX86RegInfo::Map_GPR_32bit(int32_t MipsReg, bool SignValue, int32_t MipsReg
         Reg = FreeX86Reg();
         if (Reg.isNone())
         {
-            if (HaveDebugger())
+            if (g_DebugSettings.haveDebugger)
             {
                 g_Notify->DisplayError("Map_GPR_32bit\n\nOut of registers");
             }
@@ -748,7 +748,7 @@ void CX86RegInfo::Map_GPR_64bit(int32_t MipsReg, int32_t MipsRegToLoad)
     asmjit::x86::Gp x86Hi, x86lo;
     if (MipsReg == 0)
     {
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
             g_Notify->DisplayError("Map_GPR_32bit\n\nWhy are you trying to map register 0?");
         }
@@ -761,7 +761,7 @@ void CX86RegInfo::Map_GPR_64bit(int32_t MipsReg, int32_t MipsRegToLoad)
         x86Hi = FreeX86Reg();
         if (!x86Hi.isValid())
         {
-            if (HaveDebugger())
+            if (g_DebugSettings.haveDebugger)
             {
                 g_Notify->DisplayError("Map_GPR_64bit\n\nOut of registers");
             }
@@ -1275,7 +1275,7 @@ void CX86RegInfo::PrepareFPTopToBe(int32_t Reg, int32_t RegToLoad, FPU_STATE For
             m_Assembler.fpuLoadQwordFromX86Reg(StackTopPos(), TempReg);
             break;
         default:
-            if (HaveDebugger())
+            if (g_DebugSettings.haveDebugger)
             {
                 g_Notify->DisplayError(stdstr_f("PrepareFPTopToBe\nUnkown format to load %d", Format).c_str());
             }
@@ -1411,7 +1411,7 @@ void CX86RegInfo::UnMap_FPR(int32_t Reg, bool WriteBackValue)
                 m_Assembler.fpuStoreQwordFromX86Reg(StackTopPos(), TempReg, true);
                 break;
             default:
-                if (HaveDebugger())
+                if (g_DebugSettings.haveDebugger)
                 {
                     g_Notify->DisplayError(stdstr_f("%s\nUnknown format to load %d", __FUNCTION__, m_x86fpu_State[StackTopPos()]).c_str());
                     g_Notify->BreakPoint(__FILE__, __LINE__);
@@ -1457,7 +1457,7 @@ void CX86RegInfo::UnMap_GPR(uint32_t Reg, bool WriteBackValue)
 {
     if (Reg == 0)
     {
-        if (HaveDebugger())
+        if (g_DebugSettings.haveDebugger)
         {
             g_Notify->DisplayError(stdstr_f("%s\n\nWhy are you trying to unmap register 0?", __FUNCTION__).c_str());
         }
@@ -1519,7 +1519,7 @@ void CX86RegInfo::UnMap_GPR(uint32_t Reg, bool WriteBackValue)
     }
     else
     {
-        if (!g_System->b32BitCore())
+        if (!g_GameSettings.core32Bit)
         {
             if (IsSigned(Reg))
             {
@@ -1680,7 +1680,7 @@ void CX86RegInfo::WriteBackRegisters()
         {
         case CX86RegInfo::STATE_UNKNOWN: break;
         case CX86RegInfo::STATE_CONST_32_SIGN:
-            if (!g_System->b32BitCore())
+            if (!g_GameSettings.core32Bit)
             {
                 if (!bEdiZero && (!GetMipsRegLo(count) || !(GetMipsRegLo(count) & 0x80000000)))
                 {
@@ -1704,7 +1704,7 @@ void CX86RegInfo::WriteBackRegisters()
 
             if (GetMipsRegLo(count) == 0)
             {
-                if (g_System->b32BitCore())
+                if (g_GameSettings.core32Bit)
                 {
                     if (!bEdiZero)
                     {
@@ -1716,7 +1716,7 @@ void CX86RegInfo::WriteBackRegisters()
             }
             else if (GetMipsRegLo(count) == 0xFFFFFFFF)
             {
-                if (g_System->b32BitCore())
+                if (g_GameSettings.core32Bit)
                 {
                     if (!bEsiSign)
                     {
@@ -1734,7 +1734,7 @@ void CX86RegInfo::WriteBackRegisters()
             SetMipsRegState(count, CX86RegInfo::STATE_UNKNOWN);
             break;
         case CX86RegInfo::STATE_CONST_32_ZERO:
-            if (!g_System->b32BitCore())
+            if (!g_GameSettings.core32Bit)
             {
                 if (!bEdiZero)
                 {
@@ -1746,7 +1746,7 @@ void CX86RegInfo::WriteBackRegisters()
 
             if (GetMipsRegLo(count) == 0)
             {
-                if (g_System->b32BitCore())
+                if (g_GameSettings.core32Bit)
                 {
                     if (!bEdiZero)
                     {

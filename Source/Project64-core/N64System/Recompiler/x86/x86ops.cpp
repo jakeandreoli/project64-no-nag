@@ -10,16 +10,19 @@ CX86Ops::CX86Ops(CCodeBlock & CodeBlock) :
     asmjit::x86::Assembler(&CodeBlock.CodeHolder()),
     m_CodeBlock(CodeBlock)
 {
-    setLogger(CDebugSettings::bRecordRecompilerAsm() ? this : nullptr);
+    setLogger(g_DebugSettings.recordRecompilerAsm ? this : nullptr);
     setErrorHandler(&CodeBlock);
     addFlags(asmjit::FormatFlags::kHexOffsets);
     addFlags(asmjit::FormatFlags::kHexImms);
     addFlags(asmjit::FormatFlags::kExplainImms);
+
+    m_PrimarySection = CodeBlock.CodeHolder().textSection();
+    CodeBlock.CodeHolder().newSection(&m_SecondarySection, ".secondary", SIZE_MAX, asmjit::SectionFlags::kNone, 8);
 }
 
 void CX86Ops::AdcVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -28,7 +31,7 @@ void CX86Ops::AdcVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable, 
 
 void CX86Ops::AddConstToVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -56,7 +59,7 @@ void CX86Ops::AddConstToX86Reg(const asmjit::x86::Gp & Reg, uint32_t Const)
 
 void CX86Ops::AddVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -65,7 +68,7 @@ void CX86Ops::AddVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable, 
 
 void CX86Ops::AndConstToVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -74,7 +77,7 @@ void CX86Ops::AndConstToVariable(void * Variable, const char * VariableName, uin
 
 void CX86Ops::AndVariableDispToX86Reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName, const asmjit::x86::Gp & AddrReg, Multipler Multiply)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -83,7 +86,7 @@ void CX86Ops::AndVariableDispToX86Reg(const asmjit::x86::Gp & Reg, void * Variab
 
 void CX86Ops::AndVariableToX86Reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -112,7 +115,7 @@ void CX86Ops::X86BreakPoint(const char * FileName, int32_t LineNumber)
 
 void CX86Ops::CallFunc(uint32_t FunctPtr, const char * FunctName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol(FunctPtr, FunctName);
     }
@@ -136,7 +139,7 @@ void CX86Ops::CallThis(uint32_t ThisPtr, uint32_t FunctPtr, const char * FunctNa
 
 void CX86Ops::CompConstByteToVariable(void * Variable, const char * VariableName, uint8_t Const)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -145,7 +148,7 @@ void CX86Ops::CompConstByteToVariable(void * Variable, const char * VariableName
 
 void CX86Ops::CompConstToVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -166,7 +169,7 @@ void CX86Ops::CompConstToX86reg(const asmjit::x86::Gp & Reg, uint32_t Const)
 
 void CX86Ops::CompX86regToVariable(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -210,7 +213,7 @@ void CX86Ops::Fsub(const asmjit::x86::Mem & Mem)
 
 void CX86Ops::JaeLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -219,7 +222,7 @@ void CX86Ops::JaeLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JaLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -228,7 +231,7 @@ void CX86Ops::JaLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JbLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -237,7 +240,7 @@ void CX86Ops::JbLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JbeLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -246,7 +249,7 @@ void CX86Ops::JbeLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JecxzLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -255,7 +258,7 @@ void CX86Ops::JecxzLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JeLabel8(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -264,7 +267,7 @@ void CX86Ops::JeLabel8(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JeLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -273,7 +276,7 @@ void CX86Ops::JeLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JgeLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -282,7 +285,7 @@ void CX86Ops::JgeLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JgLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -291,7 +294,7 @@ void CX86Ops::JgLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JleLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -300,7 +303,7 @@ void CX86Ops::JleLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JlLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -309,7 +312,7 @@ void CX86Ops::JlLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JmpLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -318,7 +321,7 @@ void CX86Ops::JmpLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JneLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -327,7 +330,7 @@ void CX86Ops::JneLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JnpLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -336,7 +339,7 @@ void CX86Ops::JnpLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JnsLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -345,7 +348,7 @@ void CX86Ops::JnsLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JnzLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -354,7 +357,7 @@ void CX86Ops::JnzLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JsLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -363,7 +366,7 @@ void CX86Ops::JsLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JoLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
@@ -372,16 +375,26 @@ void CX86Ops::JoLabel(const char * LabelName, asmjit::Label & JumpLabel)
 
 void CX86Ops::JzLabel(const char * LabelName, asmjit::Label & JumpLabel)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddLabelSymbol(JumpLabel, LabelName);
     }
     jz(JumpLabel);
 }
 
+void CX86Ops::EnterPrimarySection()
+{
+    section(m_PrimarySection);
+}
+
+void CX86Ops::EnterSecondarySection()
+{
+    section(m_SecondarySection);
+}
+
 void CX86Ops::MoveConstByteToVariable(void * Variable, const char * VariableName, uint8_t Const)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -390,7 +403,7 @@ void CX86Ops::MoveConstByteToVariable(void * Variable, const char * VariableName
 
 void CX86Ops::MoveConstHalfToVariable(void * Variable, const char * VariableName, uint16_t Const)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -399,7 +412,7 @@ void CX86Ops::MoveConstHalfToVariable(void * Variable, const char * VariableName
 
 void CX86Ops::MoveConstToVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -408,7 +421,7 @@ void CX86Ops::MoveConstToVariable(void * Variable, const char * VariableName, ui
 
 void CX86Ops::MoveConst64ToVariable(void * Variable, const char * VariableName, uint64_t Const)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -430,7 +443,7 @@ void CX86Ops::MoveConstToX86reg(const asmjit::x86::Gp & Reg, uint32_t Const)
 
 void CX86Ops::MoveSxVariableToX86regByte(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -439,7 +452,7 @@ void CX86Ops::MoveSxVariableToX86regByte(const asmjit::x86::Gp & Reg, void * Var
 
 void CX86Ops::MoveSxVariableToX86regHalf(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -448,7 +461,7 @@ void CX86Ops::MoveSxVariableToX86regHalf(const asmjit::x86::Gp & Reg, void * Var
 
 void CX86Ops::MoveVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -457,7 +470,7 @@ void CX86Ops::MoveVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable,
 
 void CX86Ops::MoveVariableDispToX86Reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName, const asmjit::x86::Gp & AddrReg, Multipler Multiplier)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -466,7 +479,7 @@ void CX86Ops::MoveVariableDispToX86Reg(const asmjit::x86::Gp & Reg, void * Varia
 
 void CX86Ops::MoveX86regByteToVariable(void * Variable, const char * VariableName, const asmjit::x86::Gp & Reg)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -475,7 +488,7 @@ void CX86Ops::MoveX86regByteToVariable(void * Variable, const char * VariableNam
 
 void CX86Ops::MoveX86regHalfToVariable(void * Variable, const char * VariableName, const asmjit::x86::Gp & Reg)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -484,7 +497,7 @@ void CX86Ops::MoveX86regHalfToVariable(void * Variable, const char * VariableNam
 
 void CX86Ops::MoveX86regToVariable(void * Variable, const char * VariableName, const asmjit::x86::Gp & Reg)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -493,7 +506,7 @@ void CX86Ops::MoveX86regToVariable(void * Variable, const char * VariableName, c
 
 void CX86Ops::MoveZxVariableToX86regByte(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -502,7 +515,7 @@ void CX86Ops::MoveZxVariableToX86regByte(const asmjit::x86::Gp & Reg, void * Var
 
 void CX86Ops::MoveZxVariableToX86regHalf(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -511,7 +524,7 @@ void CX86Ops::MoveZxVariableToX86regHalf(const asmjit::x86::Gp & Reg, void * Var
 
 void CX86Ops::OrConstToVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -520,7 +533,7 @@ void CX86Ops::OrConstToVariable(void * Variable, const char * VariableName, uint
 
 void CX86Ops::OrVariableToX86Reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -529,7 +542,7 @@ void CX86Ops::OrVariableToX86Reg(const asmjit::x86::Gp & Reg, void * Variable, c
 
 void CX86Ops::OrX86RegToVariable(void * Variable, const char * VariableName, const asmjit::x86::Gp & Reg)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -538,7 +551,7 @@ void CX86Ops::OrX86RegToVariable(void * Variable, const char * VariableName, con
 
 void CX86Ops::PushImm32(const char * String, uint32_t Value)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol(Value, String);
     }
@@ -547,7 +560,7 @@ void CX86Ops::PushImm32(const char * String, uint32_t Value)
 
 void CX86Ops::SetaVariable(void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -556,7 +569,7 @@ void CX86Ops::SetaVariable(void * Variable, const char * VariableName)
 
 void CX86Ops::SetbVariable(void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -565,7 +578,7 @@ void CX86Ops::SetbVariable(void * Variable, const char * VariableName)
 
 void CX86Ops::SetgVariable(void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -574,7 +587,7 @@ void CX86Ops::SetgVariable(void * Variable, const char * VariableName)
 
 void CX86Ops::SetlVariable(void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -583,7 +596,7 @@ void CX86Ops::SetlVariable(void * Variable, const char * VariableName)
 
 void CX86Ops::SbbVariableFromX86reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -592,7 +605,7 @@ void CX86Ops::SbbVariableFromX86reg(const asmjit::x86::Gp & Reg, void * Variable
 
 void CX86Ops::SubConstFromVariable(uint32_t Const, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -601,7 +614,7 @@ void CX86Ops::SubConstFromVariable(uint32_t Const, void * Variable, const char *
 
 void CX86Ops::SubVariableFromX86reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -610,7 +623,7 @@ void CX86Ops::SubVariableFromX86reg(const asmjit::x86::Gp & Reg, void * Variable
 
 void CX86Ops::TestVariable(void * Variable, const char * VariableName, uint32_t Const)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -619,7 +632,7 @@ void CX86Ops::TestVariable(void * Variable, const char * VariableName, uint32_t 
 
 void CX86Ops::XorVariableToX86reg(const asmjit::x86::Gp & Reg, void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -640,7 +653,7 @@ void CX86Ops::fpuIncStack(int32_t & StackPos)
 
 void CX86Ops::fpuLoadControl(void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }
@@ -691,7 +704,7 @@ void CX86Ops::fpuLoadReg(int32_t & StackPos, const asmjit::x86::St & Reg)
 
 void CX86Ops::fpuStoreControl(void * Variable, const char * VariableName)
 {
-    if (CDebugSettings::bRecordRecompilerAsm())
+    if (g_DebugSettings.recordRecompilerAsm)
     {
         AddNumberSymbol((uint32_t)Variable, VariableName);
     }

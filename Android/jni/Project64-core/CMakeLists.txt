@@ -11,7 +11,6 @@ add_library(Project64-core STATIC
     MemoryExceptionFilter.cpp
     Multilanguage/Language.cpp
     Settings/LoggingSettings.cpp
-    Settings/RecompilerSettings.cpp
     N64System/Enhancement/Enhancement.cpp
     N64System/Enhancement/Enhancements.cpp
     N64System/Enhancement/EnhancementFile.cpp
@@ -94,6 +93,7 @@ add_library(Project64-core STATIC
     Settings/SettingType/SettingsType-RDB.cpp
     Settings/SettingType/SettingsType-RDBCpuType.cpp
     Settings/SettingType/SettingsType-RDBOnOff.cpp
+    Settings/SettingType/SettingsType-RDBLinking.cpp
     Settings/SettingType/SettingsType-RDBRamSize.cpp
     Settings/SettingType/SettingsType-RDBSaveChip.cpp
     Settings/SettingType/SettingsType-RDBUser.cpp
@@ -106,7 +106,7 @@ add_library(Project64-core STATIC
     Settings/SettingType/SettingsType-TempString.cpp
     Settings/DebugSettings.cpp
     Settings/GameSettings.cpp
-    Settings/N64SystemSettings.cpp)
+    Settings/SystemSettings.cpp)
 
 add_definitions(-DANDROID)
 
